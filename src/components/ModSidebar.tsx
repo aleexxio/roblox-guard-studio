@@ -1,30 +1,28 @@
-import { Shield, Ban, AlertTriangle, Search, Tag, Users, Unlock, Database } from "lucide-react";
+import { Ban, AlertTriangle, Users, Server, Settings, Tag, UserCog, Unlock, Scale } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
 } from "@/components/ui/sidebar";
+import { useEffect, useState } from "react";
 
 type Role = "moderator" | "admin";
 
-const moderatorItems = [
-  { title: "Ban Player", url: "/ban", icon: Ban },
-  { title: "Warn Player", url: "/warn", icon: AlertTriangle },
-  { title: "Lookup Player", url: "/lookup", icon: Search },
-];
-
-const adminItems = [
+const allItems = [
+  { title: "Ban", url: "/ban", icon: Ban },
+  { title: "Warn", url: "/warn", icon: AlertTriangle },
+  { title: "Lookup User", url: "/lookup", icon: Users },
+  { title: "Private Servers", url: "/player-data", icon: Server },
+  { title: "Game Settings", url: "/manage-mods", icon: Settings },
   { title: "Promo Codes", url: "/promo-codes", icon: Tag },
-  { title: "Manage Moderators", url: "/manage-mods", icon: Users },
+  { title: "Player Editor", url: "/player-data", icon: UserCog },
+  { title: "Group Bans", url: "/manage-mods", icon: Users },
   { title: "Unban Player", url: "/unban", icon: Unlock },
-  { title: "Manage Player Data", url: "/player-data", icon: Database },
+  { title: "Manage Appeals", url: "/manage-mods", icon: Scale },
 ];
 
 interface ModSidebarProps {
@@ -32,72 +30,54 @@ interface ModSidebarProps {
 }
 
 export function ModSidebar({ userRole }: ModSidebarProps) {
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatDateTime = (date: Date) => {
+    return date.toLocaleString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+  };
+
   return (
-    <Sidebar className="border-r border-sidebar-border">
-      <SidebarHeader className="border-b border-sidebar-border p-4">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-gradient-primary flex items-center justify-center">
-            <Shield className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-sidebar-foreground">Mod Panel</h2>
-            <p className="text-xs text-muted-foreground capitalize">{userRole}</p>
-          </div>
+    <Sidebar className="border-r border-sidebar-border bg-sidebar-background">
+      <SidebarHeader className="border-b border-sidebar-border p-4 bg-muted/30">
+        <div>
+          <h2 className="text-base font-semibold text-sidebar-foreground">Welcome Shawnyg!</h2>
+          <p className="text-xs text-muted-foreground mt-1">{formatDateTime(currentTime)}</p>
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Moderator Tools</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {moderatorItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      className={({ isActive }) =>
-                        isActive
-                          ? "bg-sidebar-accent text-sidebar-primary font-medium"
-                          : "hover:bg-sidebar-accent/50"
-                      }
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {userRole === "admin" && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Admin Tools</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {adminItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={item.url}
-                        className={({ isActive }) =>
-                          isActive
-                            ? "bg-sidebar-accent text-sidebar-primary font-medium"
-                            : "hover:bg-sidebar-accent/50"
-                        }
-                      >
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+      <SidebarContent className="px-2 py-2">
+        <SidebarMenu>
+          {allItems.map((item) => (
+            <SidebarMenuItem key={item.title}>
+              <SidebarMenuButton asChild>
+                <NavLink
+                  to={item.url}
+                  className={({ isActive }) =>
+                    isActive
+                      ? "bg-muted text-sidebar-foreground font-medium"
+                      : "hover:bg-muted/50 text-sidebar-foreground"
+                  }
+                >
+                  <item.icon className="h-5 w-5" />
+                  <span>{item.title}</span>
+                </NavLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
       </SidebarContent>
     </Sidebar>
   );
