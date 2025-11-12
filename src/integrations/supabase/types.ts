@@ -14,6 +14,128 @@ export type Database = {
   }
   public: {
     Tables: {
+      bans: {
+        Row: {
+          banned_at: string
+          created_at: string
+          duration: string
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          moderator_id: string
+          player_id: string
+          reason: string
+        }
+        Insert: {
+          banned_at?: string
+          created_at?: string
+          duration: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          moderator_id: string
+          player_id: string
+          reason: string
+        }
+        Update: {
+          banned_at?: string
+          created_at?: string
+          duration?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          moderator_id?: string
+          player_id?: string
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bans_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      players: {
+        Row: {
+          coins: number | null
+          created_at: string
+          gems: number | null
+          id: string
+          join_date: string
+          last_seen: string | null
+          level: number | null
+          playtime_hours: number | null
+          updated_at: string
+          user_id: string | null
+          username: string
+        }
+        Insert: {
+          coins?: number | null
+          created_at?: string
+          gems?: number | null
+          id?: string
+          join_date?: string
+          last_seen?: string | null
+          level?: number | null
+          playtime_hours?: number | null
+          updated_at?: string
+          user_id?: string | null
+          username: string
+        }
+        Update: {
+          coins?: number | null
+          created_at?: string
+          gems?: number | null
+          id?: string
+          join_date?: string
+          last_seen?: string | null
+          level?: number | null
+          playtime_hours?: number | null
+          updated_at?: string
+          user_id?: string | null
+          username?: string
+        }
+        Relationships: []
+      }
+      promo_codes: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean | null
+          max_uses: number
+          reward: string
+          updated_at: string
+          uses: number | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by: string
+          id?: string
+          is_active?: boolean | null
+          max_uses?: number
+          reward: string
+          updated_at?: string
+          uses?: number | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_active?: boolean | null
+          max_uses?: number
+          reward?: string
+          updated_at?: string
+          uses?: number | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -44,11 +166,47 @@ export type Database = {
         }
         Relationships: []
       }
+      warnings: {
+        Row: {
+          created_at: string
+          id: string
+          issued_at: string
+          message: string
+          moderator_id: string
+          player_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          issued_at?: string
+          message: string
+          moderator_id: string
+          player_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          issued_at?: string
+          message?: string
+          moderator_id?: string
+          player_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warnings_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      deactivate_expired_bans: { Args: never; Returns: undefined }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]

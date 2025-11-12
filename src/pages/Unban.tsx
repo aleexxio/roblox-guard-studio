@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,27 +6,68 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Unlock } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Unban() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [bannedUsers, setBannedUsers] = useState([
-    { id: 1, username: "BannedUser1", reason: "Cheating", bannedDate: "2024-10-01", duration: "Permanent" },
-    { id: 2, username: "TempBanned", reason: "Toxic behavior", bannedDate: "2024-10-10", duration: "7 Days" },
-  ]);
+  const [bannedUsers, setBannedUsers] = useState<any[]>([]);
   const { toast } = useToast();
 
-  const handleUnban = (id: number, username: string) => {
-    // TODO: Replace with actual API call
-    setBannedUsers(bannedUsers.filter(u => u.id !== id));
-    
-    toast({
-      title: "Player Unbanned",
-      description: `${username} has been unbanned.`,
-    });
+  useEffect(() => {
+    fetchBannedUsers();
+  }, []);
+
+  const fetchBannedUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('bans')
+        .select(`
+          id,
+          reason,
+          duration,
+          banned_at,
+          players (username)
+        `)
+        .eq('is_active', true)
+        .order('banned_at', { ascending: false });
+
+      if (error) throw error;
+      setBannedUsers(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to fetch banned users",
+        variant: "destructive",
+      });
+    }
   };
 
-  const filteredUsers = bannedUsers.filter(user =>
-    user.username.toLowerCase().includes(searchTerm.toLowerCase())
+  const handleUnban = async (id: string, username: string) => {
+    try {
+      const { error } = await supabase
+        .from('bans')
+        .update({ is_active: false })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Player Unbanned",
+        description: `${username} has been unbanned.`,
+      });
+      
+      fetchBannedUsers();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to unban player",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const filteredUsers = bannedUsers.filter(ban =>
+    ban.players?.username?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -76,15 +117,15 @@ export default function Unban() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow key={user.id} className="border-border">
-                  <TableCell className="font-medium">{user.username}</TableCell>
-                  <TableCell>{user.reason}</TableCell>
-                  <TableCell>{user.bannedDate}</TableCell>
-                  <TableCell>{user.duration}</TableCell>
+              {filteredUsers.map((ban) => (
+                <TableRow key={ban.id} className="border-border">
+                  <TableCell className="font-medium">{ban.players?.username}</TableCell>
+                  <TableCell>{ban.reason}</TableCell>
+                  <TableCell>{new Date(ban.banned_at).toLocaleDateString()}</TableCell>
+                  <TableCell>{ban.duration}</TableCell>
                   <TableCell className="text-right">
                     <Button
-                      onClick={() => handleUnban(user.id, user.username)}
+                      onClick={() => handleUnban(ban.id, ban.players?.username)}
                       className="bg-success hover:bg-success/90"
                     >
                       <Unlock className="h-4 w-4 mr-2" />

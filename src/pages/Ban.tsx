@@ -6,27 +6,83 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Ban() {
   const [username, setUsername] = useState("");
   const [reason, setReason] = useState("");
   const [duration, setDuration] = useState("");
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
   const handleBan = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     
-    // TODO: Replace with actual API call
-    console.log("Banning user:", { username, reason, duration });
-    
-    toast({
-      title: "Player Banned",
-      description: `${username} has been banned for ${duration}.`,
-    });
-    
-    setUsername("");
-    setReason("");
-    setDuration("");
+    try {
+      // Find or create player
+      let { data: player, error: playerError } = await supabase
+        .from('players')
+        .select('id')
+        .eq('username', username)
+        .maybeSingle();
+
+      if (playerError) throw playerError;
+
+      if (!player) {
+        // Create player if doesn't exist
+        const { data: newPlayer, error: createError } = await supabase
+          .from('players')
+          .insert({ username })
+          .select('id')
+          .single();
+
+        if (createError) throw createError;
+        player = newPlayer;
+      }
+
+      // Calculate expiration
+      let expiresAt = null;
+      if (duration !== 'permanent') {
+        const now = new Date();
+        if (duration === '1h') now.setHours(now.getHours() + 1);
+        else if (duration === '24h') now.setHours(now.getHours() + 24);
+        else if (duration === '7d') now.setDate(now.getDate() + 7);
+        else if (duration === '30d') now.setDate(now.getDate() + 30);
+        expiresAt = now.toISOString();
+      }
+
+      // Create ban
+      const { data: sessionData } = await supabase.auth.getSession();
+      const { error: banError } = await supabase
+        .from('bans')
+        .insert({
+          player_id: player.id,
+          moderator_id: sessionData.session?.user?.id,
+          reason,
+          duration,
+          expires_at: expiresAt,
+        });
+
+      if (banError) throw banError;
+
+      toast({
+        title: "Player Banned",
+        description: `${username} has been banned for ${duration}.`,
+      });
+      
+      setUsername("");
+      setReason("");
+      setDuration("");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to ban player",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -82,8 +138,8 @@ export default function Ban() {
               </Select>
             </div>
 
-            <Button type="submit" variant="destructive" className="w-full">
-              Ban Player
+            <Button type="submit" variant="destructive" className="w-full" disabled={loading}>
+              {loading ? "Banning..." : "Ban Player"}
             </Button>
           </form>
         </CardContent>

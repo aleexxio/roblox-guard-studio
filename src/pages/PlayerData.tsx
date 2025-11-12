@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,31 +6,71 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Edit, Save } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function PlayerData() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [players, setPlayers] = useState([
-    { id: 1, username: "Player1", level: 45, coins: 12500, gems: 150 },
-    { id: 2, username: "Player2", level: 32, coins: 8300, gems: 75 },
-    { id: 3, username: "Player3", level: 68, coins: 25000, gems: 320 },
-  ]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [players, setPlayers] = useState<any[]>([]);
   const { toast } = useToast();
 
-  const handleEdit = (id: number) => {
+  useEffect(() => {
+    fetchPlayers();
+  }, []);
+
+  const fetchPlayers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('players')
+        .select('*')
+        .order('join_date', { ascending: false });
+
+      if (error) throw error;
+      setPlayers(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to fetch players",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEdit = (id: string) => {
     setEditingId(id);
   };
 
-  const handleSave = (id: number) => {
-    // TODO: Replace with actual API call
-    setEditingId(null);
-    toast({
-      title: "Player Data Updated",
-      description: "Changes have been saved successfully.",
-    });
+  const handleSave = async (id: string) => {
+    try {
+      const player = players.find(p => p.id === id);
+      if (!player) return;
+
+      const { error } = await supabase
+        .from('players')
+        .update({
+          level: player.level,
+          coins: player.coins,
+          gems: player.gems,
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setEditingId(null);
+      toast({
+        title: "Player Data Updated",
+        description: "Changes have been saved successfully.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update player data",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleChange = (id: number, field: string, value: string) => {
+  const handleChange = (id: string, field: string, value: string) => {
     setPlayers(players.map(p =>
       p.id === id ? { ...p, [field]: parseInt(value) || 0 } : p
     ));
