@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,43 +7,78 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { UserPlus, UserMinus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function ManageMods() {
   const [username, setUsername] = useState("");
-  const [moderators, setModerators] = useState([
-    { id: 1, username: "ModUser123", addedDate: "2024-10-01", permissions: "Full" },
-    { id: 2, username: "HelperMod", addedDate: "2024-10-05", permissions: "Limited" },
-  ]);
+  const [password, setPassword] = useState("");
+  const [moderators, setModerators] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    fetchModerators();
+  }, []);
+
+  const fetchModerators = async () => {
+    const { data } = await supabase
+      .from('user_roles')
+      .select('*')
+      .eq('role', 'moderator');
+    
+    setModerators(data || []);
+  };
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     
-    // TODO: Replace with actual API call
-    const newMod = {
-      id: moderators.length + 1,
-      username,
-      addedDate: new Date().toISOString().split('T')[0],
-      permissions: "Full",
-    };
-    
-    setModerators([...moderators, newMod]);
-    
-    toast({
-      title: "Moderator Added",
-      description: `${username} has been granted moderator permissions.`,
-    });
-    
-    setUsername("");
+    try {
+      const { data, error } = await supabase.functions.invoke('create-moderator', {
+        body: { username, password, role: 'moderator' }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Moderator Created",
+        description: `Account created for ${username}`,
+      });
+      
+      setUsername("");
+      setPassword("");
+      fetchModerators();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create moderator",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleRemove = (id: number, username: string) => {
-    setModerators(moderators.filter(m => m.id !== id));
-    toast({
-      title: "Moderator Removed",
-      description: `${username} has been removed from moderators.`,
-      variant: "destructive",
-    });
+  const handleRemove = async (userId: string, username: string) => {
+    try {
+      const { error } = await supabase.auth.admin.deleteUser(userId);
+      
+      if (error) throw error;
+
+      toast({
+        title: "Moderator Removed",
+        description: `${username} has been removed`,
+        variant: "destructive",
+      });
+      
+      fetchModerators();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to remove moderator",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -62,20 +97,29 @@ export default function ManageMods() {
           <form onSubmit={handleAdd} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="mod-username">Username</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="mod-username"
-                  placeholder="Enter username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  required
-                />
-                <Button type="submit" className="bg-gradient-primary hover:opacity-90">
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Add
-                </Button>
-              </div>
+              <Input
+                id="mod-username"
+                placeholder="Enter username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+              />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="mod-password">Password</Label>
+              <Input
+                id="mod-password"
+                type="password"
+                placeholder="Enter password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            <Button type="submit" className="bg-gradient-primary hover:opacity-90" disabled={loading}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              {loading ? "Creating..." : "Create Moderator"}
+            </Button>
           </form>
         </CardContent>
       </Card>
@@ -91,25 +135,23 @@ export default function ManageMods() {
               <TableRow className="hover:bg-transparent border-border">
                 <TableHead>Username</TableHead>
                 <TableHead>Added Date</TableHead>
-                <TableHead>Permissions</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {moderators.map((mod) => (
                 <TableRow key={mod.id} className="border-border">
-                  <TableCell className="font-medium">{mod.username}</TableCell>
-                  <TableCell>{mod.addedDate}</TableCell>
+                  <TableCell className="font-medium">
+                    {mod.discord_username || 'No username'}
+                  </TableCell>
                   <TableCell>
-                    <Badge variant={mod.permissions === "Full" ? "default" : "secondary"}>
-                      {mod.permissions}
-                    </Badge>
+                    {new Date(mod.created_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => handleRemove(mod.id, mod.username)}
+                      onClick={() => handleRemove(mod.user_id, mod.discord_username)}
                     >
                       <UserMinus className="h-4 w-4 mr-2" />
                       Remove
