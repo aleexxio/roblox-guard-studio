@@ -77,6 +77,7 @@ export default function PlayerData() {
   };
 
   const filteredPlayers = players.filter(player =>
+    player.roblox_id?.includes(searchTerm) ||
     player.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -90,15 +91,15 @@ export default function PlayerData() {
       <Card className="border-border shadow-glow-primary/20">
         <CardHeader>
           <CardTitle>Search Players</CardTitle>
-          <CardDescription>Find players to manage their data</CardDescription>
+          <CardDescription>Find players by Roblox ID or username to manage their data</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            <Label htmlFor="search">Search Username</Label>
+            <Label htmlFor="search">Search Roblox ID or Username</Label>
             <div className="flex gap-2">
               <Input
                 id="search"
-                placeholder="Search players..."
+                placeholder="Search by Roblox ID or username..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -119,6 +120,7 @@ export default function PlayerData() {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent border-border">
+                <TableHead>Roblox ID</TableHead>
                 <TableHead>Username</TableHead>
                 <TableHead>Level</TableHead>
                 <TableHead>Coins</TableHead>
@@ -129,7 +131,8 @@ export default function PlayerData() {
             <TableBody>
               {filteredPlayers.map((player) => (
                 <TableRow key={player.id} className="border-border">
-                  <TableCell className="font-medium">{player.username}</TableCell>
+                  <TableCell className="font-medium">{player.roblox_id}</TableCell>
+                  <TableCell>{player.username}</TableCell>
                   <TableCell>
                     {editingId === player.id ? (
                       <Input

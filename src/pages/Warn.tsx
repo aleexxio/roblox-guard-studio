@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function Warn() {
+  const [robloxId, setRobloxId] = useState("");
   const [username, setUsername] = useState("");
   const [warning, setWarning] = useState("");
   const [loading, setLoading] = useState(false);
@@ -22,7 +23,7 @@ export default function Warn() {
       let { data: player, error: playerError } = await supabase
         .from('players')
         .select('id')
-        .eq('username', username)
+        .eq('roblox_id', robloxId)
         .maybeSingle();
 
       if (playerError) throw playerError;
@@ -30,7 +31,7 @@ export default function Warn() {
       if (!player) {
         const { data: newPlayer, error: createError } = await supabase
           .from('players')
-          .insert({ username })
+          .insert({ roblox_id: robloxId, username: username || `Player_${robloxId}` })
           .select('id')
           .single();
 
@@ -52,9 +53,10 @@ export default function Warn() {
 
       toast({
         title: "Warning Issued",
-        description: `${username} has been warned.`,
+        description: `Player ${robloxId} has been warned.`,
       });
       
+      setRobloxId("");
       setUsername("");
       setWarning("");
     } catch (error: any) {
@@ -83,13 +85,23 @@ export default function Warn() {
         <CardContent>
           <form onSubmit={handleWarn} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="roblox-id">Roblox ID</Label>
+              <Input
+                id="roblox-id"
+                placeholder="Enter Roblox ID"
+                value={robloxId}
+                onChange={(e) => setRobloxId(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="username">Username (Optional)</Label>
               <Input
                 id="username"
                 placeholder="Enter username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                required
               />
             </div>
 

@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function Ban() {
+  const [robloxId, setRobloxId] = useState("");
   const [username, setUsername] = useState("");
   const [reason, setReason] = useState("");
   const [duration, setDuration] = useState("");
@@ -24,7 +25,7 @@ export default function Ban() {
       let { data: player, error: playerError } = await supabase
         .from('players')
         .select('id')
-        .eq('username', username)
+        .eq('roblox_id', robloxId)
         .maybeSingle();
 
       if (playerError) throw playerError;
@@ -33,7 +34,7 @@ export default function Ban() {
         // Create player if doesn't exist
         const { data: newPlayer, error: createError } = await supabase
           .from('players')
-          .insert({ username })
+          .insert({ roblox_id: robloxId, username: username || `Player_${robloxId}` })
           .select('id')
           .single();
 
@@ -68,9 +69,10 @@ export default function Ban() {
 
       toast({
         title: "Player Banned",
-        description: `${username} has been banned for ${duration}.`,
+        description: `Player ${robloxId} has been banned for ${duration}.`,
       });
       
+      setRobloxId("");
       setUsername("");
       setReason("");
       setDuration("");
@@ -100,13 +102,23 @@ export default function Ban() {
         <CardContent>
           <form onSubmit={handleBan} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="roblox-id">Roblox ID</Label>
+              <Input
+                id="roblox-id"
+                placeholder="Enter Roblox ID"
+                value={robloxId}
+                onChange={(e) => setRobloxId(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="username">Username (Optional)</Label>
               <Input
                 id="username"
                 placeholder="Enter username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                required
               />
             </div>
 

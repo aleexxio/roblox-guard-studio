@@ -68,8 +68,8 @@ export type Database = {
           last_seen: string | null
           level: number | null
           playtime_hours: number | null
+          roblox_id: string
           updated_at: string
-          user_id: string | null
           username: string
         }
         Insert: {
@@ -81,8 +81,8 @@ export type Database = {
           last_seen?: string | null
           level?: number | null
           playtime_hours?: number | null
+          roblox_id: string
           updated_at?: string
-          user_id?: string | null
           username: string
         }
         Update: {
@@ -94,8 +94,8 @@ export type Database = {
           last_seen?: string | null
           level?: number | null
           playtime_hours?: number | null
+          roblox_id?: string
           updated_at?: string
-          user_id?: string | null
           username?: string
         }
         Relationships: []

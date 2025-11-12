@@ -26,7 +26,7 @@ export default function Unban() {
           reason,
           duration,
           banned_at,
-          players (username)
+          players (username, roblox_id)
         `)
         .eq('is_active', true)
         .order('banned_at', { ascending: false });
@@ -42,7 +42,7 @@ export default function Unban() {
     }
   };
 
-  const handleUnban = async (id: string, username: string) => {
+  const handleUnban = async (id: string, robloxId: string) => {
     try {
       const { error } = await supabase
         .from('bans')
@@ -53,7 +53,7 @@ export default function Unban() {
 
       toast({
         title: "Player Unbanned",
-        description: `${username} has been unbanned.`,
+        description: `Player ${robloxId} has been unbanned.`,
       });
       
       fetchBannedUsers();
@@ -67,6 +67,7 @@ export default function Unban() {
   };
 
   const filteredUsers = bannedUsers.filter(ban =>
+    ban.players?.roblox_id?.includes(searchTerm) ||
     ban.players?.username?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -80,15 +81,15 @@ export default function Unban() {
       <Card className="border-border shadow-glow-primary/20">
         <CardHeader>
           <CardTitle>Search Banned Players</CardTitle>
-          <CardDescription>Find and unban players</CardDescription>
+          <CardDescription>Find and unban players by Roblox ID or username</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            <Label htmlFor="search">Search Username</Label>
+            <Label htmlFor="search">Search Roblox ID or Username</Label>
             <div className="flex gap-2">
               <Input
                 id="search"
-                placeholder="Search banned players..."
+                placeholder="Search by Roblox ID or username..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -109,6 +110,7 @@ export default function Unban() {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent border-border">
+                <TableHead>Roblox ID</TableHead>
                 <TableHead>Username</TableHead>
                 <TableHead>Reason</TableHead>
                 <TableHead>Banned Date</TableHead>
@@ -119,13 +121,14 @@ export default function Unban() {
             <TableBody>
               {filteredUsers.map((ban) => (
                 <TableRow key={ban.id} className="border-border">
-                  <TableCell className="font-medium">{ban.players?.username}</TableCell>
+                  <TableCell className="font-medium">{ban.players?.roblox_id}</TableCell>
+                  <TableCell>{ban.players?.username}</TableCell>
                   <TableCell>{ban.reason}</TableCell>
                   <TableCell>{new Date(ban.banned_at).toLocaleDateString()}</TableCell>
                   <TableCell>{ban.duration}</TableCell>
                   <TableCell className="text-right">
                     <Button
-                      onClick={() => handleUnban(ban.id, ban.players?.username)}
+                      onClick={() => handleUnban(ban.id, ban.players?.roblox_id)}
                       className="bg-success hover:bg-success/90"
                     >
                       <Unlock className="h-4 w-4 mr-2" />
