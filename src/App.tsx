@@ -8,7 +8,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { ModSidebar } from "@/components/ModSidebar";
 import { Header } from "@/components/Header";
 import { supabase } from "@/integrations/supabase/client";
-import type { User, Session } from "@supabase/supabase-js";
+import type { Session } from "@supabase/supabase-js";
 import Home from "./pages/Home";
 import Ban from "./pages/Ban";
 import Warn from "./pages/Warn";
@@ -25,64 +25,68 @@ const queryClient = new QueryClient();
 type Role = "moderator" | "admin";
 
 const AppContent = () => {
-  const [userRole, setUserRole] = useState<Role | null>(null);
-  const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [userRole, setUserRole] = useState<Role | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-      }
-    );
-
-    // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
-    if (!user) {
-      setUserRole(null);
-      return;
-    }
+    const fetchUserRole = async () => {
+      if (!session?.user) {
+        setUserRole(null);
+        setLoading(false);
+        return;
+      }
 
-    // Fetch user role
-    const fetchRole = async () => {
       const { data } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', user.id)
-        .single();
-      
-      setUserRole(data?.role as Role || 'moderator');
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      setUserRole(data?.role || null);
+      setLoading(false);
     };
 
-    fetchRole();
-  }, [user]);
+    fetchUserRole();
+  }, [session]);
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
   if (!session) {
-    return <Auth />;
+    return (
+      <Routes>
+        <Route path="/auth" element={<Auth />} />
+        <Route path="*" element={<Navigate to="/auth" replace />} />
+      </Routes>
+    );
+  }
+
+  if (!userRole) {
+    return <div className="min-h-screen flex items-center justify-center">No role assigned. Contact an administrator.</div>;
   }
 
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
-        <ModSidebar userRole={userRole || "moderator"} />
+        <ModSidebar userRole={userRole} />
         <div className="flex-1 flex flex-col">
-          <Header userRole={userRole || "moderator"} onRoleChange={setUserRole} />
+          <Header userRole={userRole} />
           <main className="flex-1">
             <Routes>
               <Route path="/" element={<Home />} />

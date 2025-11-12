@@ -10,7 +10,6 @@ type Role = "moderator" | "admin";
 
 interface HeaderProps {
   userRole: Role;
-  onRoleChange: (role: Role) => void;
 }
 
 export function Header({ userRole }: HeaderProps) {
