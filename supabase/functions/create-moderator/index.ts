@@ -51,14 +51,17 @@ serve(async (req) => {
       );
     }
 
-    const { email, password, role } = await req.json();
+    const { username, password, role } = await req.json();
 
-    if (!email || !password || !role) {
+    if (!username || !password || !role) {
       return new Response(
-        JSON.stringify({ error: 'Email, password, and role are required' }),
+        JSON.stringify({ error: 'Username, password, and role are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Create email from username
+    const email = `${username}@modpanel.local`;
 
     // Create the new user
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -75,12 +78,13 @@ serve(async (req) => {
       );
     }
 
-    // Assign role
+    // Assign role with username
     const { error: roleError } = await supabaseAdmin
       .from('user_roles')
       .insert({
         user_id: newUser.user.id,
         role: role,
+        discord_username: username,
       });
 
     if (roleError) {
@@ -96,7 +100,7 @@ serve(async (req) => {
         success: true,
         user: {
           id: newUser.user.id,
-          email: newUser.user.email,
+          username: username,
           role: role
         }
       }),

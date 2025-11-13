@@ -10,7 +10,7 @@ import { UserPlus, UserMinus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function ManageMods() {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [moderators, setModerators] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -23,26 +23,15 @@ export default function ManageMods() {
   const fetchModerators = async () => {
     const { data: rolesData } = await supabase
       .from('user_roles')
-      .select('user_id, created_at, id')
+      .select('user_id, created_at, id, discord_username')
       .eq('role', 'moderator');
     
     if (!rolesData) {
       setModerators([]);
       return;
     }
-
-    // Fetch email for each user
-    const modsWithEmails = await Promise.all(
-      rolesData.map(async (mod) => {
-        const { data: { user } } = await supabase.auth.admin.getUserById(mod.user_id);
-        return {
-          ...mod,
-          email: user?.email || 'No email'
-        };
-      })
-    );
     
-    setModerators(modsWithEmails);
+    setModerators(rolesData);
   };
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -51,17 +40,17 @@ export default function ManageMods() {
     
     try {
       const { data, error } = await supabase.functions.invoke('create-moderator', {
-        body: { email, password, role: 'moderator' }
+        body: { username, password, role: 'moderator' }
       });
 
       if (error) throw error;
 
       toast({
         title: "Moderator Created",
-        description: `Account created for ${email}`,
+        description: `Account created for ${username}`,
       });
       
-      setEmail("");
+      setUsername("");
       setPassword("");
       fetchModerators();
     } catch (error: any) {
@@ -112,13 +101,13 @@ export default function ManageMods() {
         <CardContent>
           <form onSubmit={handleAdd} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="mod-email">Email</Label>
+              <Label htmlFor="mod-username">Username</Label>
               <Input
-                id="mod-email"
-                type="email"
-                placeholder="moderator@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="mod-username"
+                type="text"
+                placeholder="moderator_username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
               />
             </div>
@@ -150,7 +139,7 @@ export default function ManageMods() {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent border-border">
-                <TableHead>Email</TableHead>
+                <TableHead>Username</TableHead>
                 <TableHead>Added Date</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -159,7 +148,7 @@ export default function ManageMods() {
               {moderators.map((mod) => (
                 <TableRow key={mod.id} className="border-border">
                   <TableCell className="font-medium">
-                    {mod.email}
+                    {mod.discord_username || 'Unknown'}
                   </TableCell>
                   <TableCell>
                     {new Date(mod.created_at).toLocaleDateString()}
@@ -168,7 +157,7 @@ export default function ManageMods() {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => handleRemove(mod.user_id, mod.email)}
+                      onClick={() => handleRemove(mod.user_id, mod.discord_username || 'moderator')}
                     >
                       <UserMinus className="h-4 w-4 mr-2" />
                       Remove
