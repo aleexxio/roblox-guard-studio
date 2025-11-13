@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { getUserByUsername, getUserById } from "@/lib/roblox-api";
+import { Loader2 } from "lucide-react";
 
 export default function Ban() {
   const [robloxId, setRobloxId] = useState("");
@@ -14,10 +16,87 @@ export default function Ban() {
   const [reason, setReason] = useState("");
   const [duration, setDuration] = useState("");
   const [loading, setLoading] = useState(false);
+  const [fetchingUser, setFetchingUser] = useState(false);
   const { toast } = useToast();
+
+  const handleUsernameChange = async (value: string) => {
+    setUsername(value);
+    
+    if (value.trim().length > 0) {
+      setFetchingUser(true);
+      try {
+        const user = await getUserByUsername(value.trim());
+        if (user) {
+          setRobloxId(user.id.toString());
+          toast({
+            title: "User Found",
+            description: `Found ${user.name} (ID: ${user.id})`,
+          });
+        } else {
+          toast({
+            title: "User Not Found",
+            description: "No Roblox user found with that username",
+            variant: "destructive",
+          });
+          setRobloxId("");
+        }
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to fetch user from Roblox",
+          variant: "destructive",
+        });
+      } finally {
+        setFetchingUser(false);
+      }
+    }
+  };
+
+  const handleRobloxIdChange = async (value: string) => {
+    setRobloxId(value);
+    
+    if (value.trim().length > 0 && !isNaN(Number(value))) {
+      setFetchingUser(true);
+      try {
+        const user = await getUserById(value.trim());
+        if (user) {
+          setUsername(user.name);
+          toast({
+            title: "User Found",
+            description: `Found ${user.name} (ID: ${user.id})`,
+          });
+        } else {
+          toast({
+            title: "User Not Found",
+            description: "No Roblox user found with that ID",
+            variant: "destructive",
+          });
+          setUsername("");
+        }
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to fetch user from Roblox",
+          variant: "destructive",
+        });
+      } finally {
+        setFetchingUser(false);
+      }
+    }
+  };
 
   const handleBan = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!robloxId || !username) {
+      toast({
+        title: "Error",
+        description: "Please provide either a username or Roblox ID",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setLoading(true);
     
     try {
@@ -34,7 +113,7 @@ export default function Ban() {
         // Create player if doesn't exist
         const { data: newPlayer, error: createError } = await supabase
           .from('players')
-          .insert({ roblox_id: robloxId, username: username || `Player_${robloxId}` })
+          .insert({ roblox_id: robloxId, username: username })
           .select('id')
           .single();
 
@@ -102,24 +181,37 @@ export default function Ban() {
         <CardContent>
           <form onSubmit={handleBan} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="roblox-id">Roblox ID</Label>
-              <Input
-                id="roblox-id"
-                placeholder="Enter Roblox ID"
-                value={robloxId}
-                onChange={(e) => setRobloxId(e.target.value)}
-                required
-              />
+              <Label htmlFor="username">Username</Label>
+              <div className="relative">
+                <Input
+                  id="username"
+                  placeholder="Enter username"
+                  value={username}
+                  onChange={(e) => handleUsernameChange(e.target.value)}
+                  disabled={fetchingUser}
+                />
+                {fetchingUser && (
+                  <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+              </div>
             </div>
 
+            <div className="text-center text-sm text-muted-foreground">OR</div>
+
             <div className="space-y-2">
-              <Label htmlFor="username">Username (Optional)</Label>
-              <Input
-                id="username"
-                placeholder="Enter username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
+              <Label htmlFor="roblox-id">Roblox ID</Label>
+              <div className="relative">
+                <Input
+                  id="roblox-id"
+                  placeholder="Enter Roblox ID"
+                  value={robloxId}
+                  onChange={(e) => handleRobloxIdChange(e.target.value)}
+                  disabled={fetchingUser}
+                />
+                {fetchingUser && (
+                  <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -150,7 +242,7 @@ export default function Ban() {
               </Select>
             </div>
 
-            <Button type="submit" variant="destructive" className="w-full" disabled={loading}>
+            <Button type="submit" variant="destructive" className="w-full" disabled={loading || fetchingUser}>
               {loading ? "Banning..." : "Ban Player"}
             </Button>
           </form>
