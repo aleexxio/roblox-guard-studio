@@ -66,7 +66,9 @@ export default function ManageMods() {
 
   const handleRemove = async (userId: string, username: string) => {
     try {
-      const { error } = await supabase.auth.admin.deleteUser(userId);
+      const { data, error } = await supabase.functions.invoke('delete-moderator', {
+        body: { userId }
+      });
       
       if (error) throw error;
 
@@ -80,7 +82,7 @@ export default function ManageMods() {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to remove moderator",
+        description: error.message || "Failed to remove moderator",
         variant: "destructive",
       });
     }
