@@ -66,8 +66,22 @@ export default function ManageMods() {
 
   const handleRemove = async (userId: string, username: string) => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to remove moderators",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke('delete-moderator', {
-        body: { userId }
+        body: { userId },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
       
       if (error) throw error;
