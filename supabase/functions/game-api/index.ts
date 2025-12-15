@@ -94,12 +94,30 @@ serve(async (req) => {
           });
         }
 
+        // Calculate appeal timer (time until appealable_at)
+        let appealTimer = null;
+        let canAppeal = false;
+        if (ban.appealable_at) {
+          const appealableDate = new Date(ban.appealable_at);
+          const now = new Date();
+          if (now >= appealableDate) {
+            canAppeal = true;
+          } else {
+            // Calculate remaining time in seconds
+            appealTimer = Math.floor((appealableDate.getTime() - now.getTime()) / 1000);
+          }
+        }
+
         return new Response(JSON.stringify({ 
           banned: true,
+          ban_id: ban.id,
           reason: ban.reason,
           duration: ban.duration,
           expires_at: ban.expires_at,
-          banned_at: ban.banned_at
+          banned_at: ban.banned_at,
+          appealable_at: ban.appealable_at,
+          appeal_timer_seconds: appealTimer,
+          can_appeal: canAppeal
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -260,6 +278,82 @@ serve(async (req) => {
         success: true, 
         reward: promoCode.reward 
       }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Submit ban appeal
+    if (action === 'submit_appeal' && req.method === 'POST') {
+      const body = await req.json();
+      const { ban_id, roblox_id, username, question1, question2, question3 } = body;
+
+      if (!ban_id || !roblox_id || !username || !question1 || !question2 || !question3) {
+        return new Response(JSON.stringify({ error: 'Missing required fields' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Verify the ban exists and player can appeal
+      const { data: ban } = await supabase
+        .from('bans')
+        .select('*, players!inner(id)')
+        .eq('id', ban_id)
+        .eq('is_active', true)
+        .single();
+
+      if (!ban) {
+        return new Response(JSON.stringify({ error: 'Ban not found or not active' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Check if appeal period has started
+      if (ban.appealable_at && new Date(ban.appealable_at) > new Date()) {
+        return new Response(JSON.stringify({ error: 'Appeal period has not started yet' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Check if already has a pending appeal
+      const { data: existingAppeal } = await supabase
+        .from('ban_appeals')
+        .select('id')
+        .eq('ban_id', ban_id)
+        .eq('status', 'pending')
+        .maybeSingle();
+
+      if (existingAppeal) {
+        return new Response(JSON.stringify({ error: 'You already have a pending appeal' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Create the appeal
+      const { error: appealError } = await supabase
+        .from('ban_appeals')
+        .insert({
+          ban_id,
+          player_id: ban.players.id,
+          roblox_id,
+          username,
+          question1,
+          question2,
+          question3,
+        });
+
+      if (appealError) {
+        console.error('Error creating appeal:', appealError);
+        return new Response(JSON.stringify({ error: 'Failed to submit appeal' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true, message: 'Appeal submitted successfully' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

@@ -5,19 +5,30 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getUserByUsername, getUserById } from "@/lib/roblox-api";
 import { Loader2 } from "lucide-react";
 
+const PRESET_REASONS = [
+  "Exploiting",
+  "Inappropriate Actions",
+  "Game Staff Impersonation",
+];
+
 export default function Ban() {
   const [robloxId, setRobloxId] = useState("");
   const [username, setUsername] = useState("");
-  const [reason, setReason] = useState("");
+  const [reasonType, setReasonType] = useState<"preset" | "custom">("preset");
+  const [presetReason, setPresetReason] = useState("");
+  const [customReason, setCustomReason] = useState("");
   const [duration, setDuration] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetchingUser, setFetchingUser] = useState(false);
   const { toast } = useToast();
+
+  const reason = reasonType === "preset" ? presetReason : customReason;
 
   const handleUsernameBlur = async () => {
     if (username.trim().length > 0 && !robloxId) {
@@ -172,6 +183,10 @@ export default function Ban() {
         expiresAt = now.toISOString();
       }
 
+      // Calculate appealable_at (14 days from now)
+      const appealableAt = new Date();
+      appealableAt.setDate(appealableAt.getDate() + 14);
+
       // Create ban
       const { data: sessionData } = await supabase.auth.getSession();
       const { error: banError } = await supabase
@@ -182,6 +197,7 @@ export default function Ban() {
           reason,
           duration,
           expires_at: expiresAt,
+          appealable_at: appealableAt.toISOString(),
         });
 
       if (banError) throw banError;
@@ -193,8 +209,10 @@ export default function Ban() {
       
       setRobloxId("");
       setUsername("");
-      setReason("");
+      setPresetReason("");
+      setCustomReason("");
       setDuration("");
+      setReasonType("preset");
     } catch (error: any) {
       toast({
         title: "Error",
@@ -256,16 +274,40 @@ export default function Ban() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="reason">Reason</Label>
-              <Textarea
-                id="reason"
-                placeholder="Enter ban reason"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                required
-                rows={4}
-              />
+            <div className="space-y-4">
+              <Label>Reason Type</Label>
+              <RadioGroup value={reasonType} onValueChange={(value) => setReasonType(value as "preset" | "custom")} className="flex gap-4">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="preset" id="preset" />
+                  <Label htmlFor="preset" className="cursor-pointer">Preset Reason</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="custom" id="custom" />
+                  <Label htmlFor="custom" className="cursor-pointer">Custom Reason</Label>
+                </div>
+              </RadioGroup>
+
+              {reasonType === "preset" ? (
+                <Select value={presetReason} onValueChange={setPresetReason} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a reason" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover border-border z-50">
+                    {PRESET_REASONS.map((r) => (
+                      <SelectItem key={r} value={r}>{r}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Textarea
+                  id="reason"
+                  placeholder="Enter custom ban reason"
+                  value={customReason}
+                  onChange={(e) => setCustomReason(e.target.value)}
+                  required
+                  rows={4}
+                />
+              )}
             </div>
 
             <div className="space-y-2">

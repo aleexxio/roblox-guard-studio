@@ -14,8 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      ban_appeals: {
+        Row: {
+          ban_id: string
+          created_at: string
+          id: string
+          player_id: string
+          question1: string
+          question2: string
+          question3: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          roblox_id: string
+          status: string
+          username: string
+        }
+        Insert: {
+          ban_id: string
+          created_at?: string
+          id?: string
+          player_id: string
+          question1: string
+          question2: string
+          question3: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          roblox_id: string
+          status?: string
+          username: string
+        }
+        Update: {
+          ban_id?: string
+          created_at?: string
+          id?: string
+          player_id?: string
+          question1?: string
+          question2?: string
+          question3?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          roblox_id?: string
+          status?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ban_appeals_ban_id_fkey"
+            columns: ["ban_id"]
+            isOneToOne: false
+            referencedRelation: "bans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ban_appeals_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bans: {
         Row: {
+          appealable_at: string | null
           banned_at: string
           created_at: string
           duration: string
@@ -27,6 +88,7 @@ export type Database = {
           reason: string
         }
         Insert: {
+          appealable_at?: string | null
           banned_at?: string
           created_at?: string
           duration: string
@@ -38,6 +100,7 @@ export type Database = {
           reason: string
         }
         Update: {
+          appealable_at?: string | null
           banned_at?: string
           created_at?: string
           duration?: string
