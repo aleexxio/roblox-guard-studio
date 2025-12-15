@@ -4,26 +4,128 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search } from "lucide-react";
+import { Search, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { getUserByUsername, getUserById } from "@/lib/roblox-api";
 
 export default function Lookup() {
   const [robloxId, setRobloxId] = useState("");
+  const [username, setUsername] = useState("");
   const [playerData, setPlayerData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [fetchingUser, setFetchingUser] = useState(false);
   const { toast } = useToast();
+
+  const handleUsernameBlur = async () => {
+    if (username.trim().length > 0 && !robloxId) {
+      setFetchingUser(true);
+      try {
+        const user = await getUserByUsername(username.trim());
+        if (user) {
+          setRobloxId(user.id.toString());
+          toast({
+            title: "User Found",
+            description: `Found ${user.name} (ID: ${user.id})`,
+          });
+        } else {
+          toast({
+            title: "User Not Found",
+            description: "No Roblox user found with that username",
+            variant: "destructive",
+          });
+        }
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to fetch user from Roblox",
+          variant: "destructive",
+        });
+      } finally {
+        setFetchingUser(false);
+      }
+    }
+  };
+
+  const handleRobloxIdBlur = async () => {
+    if (robloxId.trim().length > 0 && !username && !isNaN(Number(robloxId))) {
+      setFetchingUser(true);
+      try {
+        const user = await getUserById(robloxId.trim());
+        if (user) {
+          setUsername(user.name);
+          toast({
+            title: "User Found",
+            description: `Found ${user.name} (ID: ${user.id})`,
+          });
+        } else {
+          toast({
+            title: "User Not Found",
+            description: "No Roblox user found with that ID",
+            variant: "destructive",
+          });
+        }
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to fetch user from Roblox",
+          variant: "destructive",
+        });
+      } finally {
+        setFetchingUser(false);
+      }
+    }
+  };
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!robloxId && !username) {
+      toast({
+        title: "Error",
+        description: "Please enter a username or Roblox ID",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     
     try {
-      // Get player data
+      // Determine search method
+      let searchRobloxId = robloxId;
+      
+      // If only username provided, fetch Roblox ID first
+      if (!robloxId && username) {
+        const user = await getUserByUsername(username.trim());
+        if (user) {
+          searchRobloxId = user.id.toString();
+          setRobloxId(searchRobloxId);
+        } else {
+          toast({
+            title: "User Not Found",
+            description: "No Roblox user found with that username",
+            variant: "destructive",
+          });
+          setPlayerData(null);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // If only Roblox ID provided, fetch username
+      if (robloxId && !username) {
+        const user = await getUserById(robloxId.trim());
+        if (user) {
+          setUsername(user.name);
+        }
+      }
+
+      // Get player data from database
       const { data: player, error: playerError } = await supabase
         .from('players')
         .select('*')
-        .eq('roblox_id', robloxId)
+        .eq('roblox_id', searchRobloxId)
         .maybeSingle();
 
       if (playerError) throw playerError;
@@ -31,7 +133,7 @@ export default function Lookup() {
       if (!player) {
         toast({
           title: "Player Not Found",
-          description: `No player found with Roblox ID: ${robloxId}`,
+          description: `No player found with Roblox ID: ${searchRobloxId}. They may not have joined the game yet.`,
           variant: "destructive",
         });
         setPlayerData(null);
@@ -85,32 +187,56 @@ export default function Lookup() {
     <div className="p-8 space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-foreground">Player Lookup</h1>
-        <p className="text-muted-foreground">Search for player information by Roblox ID</p>
+        <p className="text-muted-foreground">Search for player information by username or Roblox ID</p>
       </div>
 
       <Card className="border-border shadow-glow-primary/20">
         <CardHeader>
           <CardTitle>Search Player</CardTitle>
-          <CardDescription>Enter a Roblox ID to view player details</CardDescription>
+          <CardDescription>Enter a username or Roblox ID to view player details</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSearch} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="search-roblox-id">Roblox ID</Label>
-              <div className="flex gap-2">
+              <Label htmlFor="lookup-username">Username</Label>
+              <div className="relative">
                 <Input
-                  id="search-roblox-id"
+                  id="lookup-username"
+                  placeholder="Enter username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  onBlur={handleUsernameBlur}
+                  disabled={fetchingUser}
+                />
+                {fetchingUser && (
+                  <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+              </div>
+            </div>
+
+            <div className="text-center text-sm text-muted-foreground">OR</div>
+
+            <div className="space-y-2">
+              <Label htmlFor="lookup-roblox-id">Roblox ID</Label>
+              <div className="relative">
+                <Input
+                  id="lookup-roblox-id"
                   placeholder="Enter Roblox ID"
                   value={robloxId}
                   onChange={(e) => setRobloxId(e.target.value)}
-                  required
+                  onBlur={handleRobloxIdBlur}
+                  disabled={fetchingUser}
                 />
-                <Button type="submit" disabled={loading}>
-                  <Search className="h-4 w-4 mr-2" />
-                  {loading ? "Searching..." : "Search"}
-                </Button>
+                {fetchingUser && (
+                  <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
+                )}
               </div>
             </div>
+
+            <Button type="submit" className="w-full" disabled={loading || fetchingUser}>
+              <Search className="h-4 w-4 mr-2" />
+              {loading ? "Searching..." : "Search"}
+            </Button>
           </form>
         </CardContent>
       </Card>
