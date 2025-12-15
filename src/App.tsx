@@ -15,6 +15,7 @@ import Warn from "./pages/Warn";
 import Lookup from "./pages/Lookup";
 import PromoCodes from "./pages/PromoCodes";
 import ManageMods from "./pages/ManageMods";
+import ManageAppeals from "./pages/ManageAppeals";
 import Unban from "./pages/Unban";
 import PlayerData from "./pages/PlayerData";
 import Auth from "./pages/Auth";
@@ -99,6 +100,15 @@ const AppContent = () => {
                   <Route path="/manage-mods" element={<ManageMods />} />
                   <Route path="/unban" element={<Unban />} />
                   <Route path="/player-data" element={<PlayerData />} />
+                  <Route path="/manage-appeals" element={<ManageAppeals />} />
+                </>
+              )}
+              {userRole === "moderator" && (
+                <>
+                  <Route path="/promo-codes" element={<PromoCodes />} />
+                  <Route path="/unban" element={<Unban />} />
+                  <Route path="/player-data" element={<PlayerData />} />
+                  <Route path="/manage-appeals" element={<ManageAppeals />} />
                 </>
               )}
               <Route path="*" element={<NotFound />} />

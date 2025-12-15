@@ -16,7 +16,7 @@ export default function Home() {
     { title: "UNBAN PLAYER", path: "/unban", variant: "destructive" as const },
     { title: "PROMO CODES", path: "/promo-codes", variant: "accent" as const },
     { title: "PLAYER EDITOR", path: "/player-data", variant: "warning" as const },
-    { title: "GROUP BANS", path: "/manage-mods", variant: "destructive" as const },
+    { title: "MANAGE APPEALS", path: "/manage-appeals", variant: "accent" as const },
   ];
 
   return (
@@ -33,8 +33,8 @@ export default function Home() {
 
         {/* Title and Subtitle */}
         <div className="text-center space-y-3">
-          <h1 className="text-4xl font-bold text-foreground">Welcome to the PRC Admin Panel</h1>
-          <p className="text-muted-foreground">The name of the girl on the statue of liberty is Mother of Exiles.</p>
+          <h1 className="text-4xl font-bold text-foreground">Clarlake County Admin Panel</h1>
+          <p className="text-muted-foreground">If you're here that means someone is getting banned soon, uh oh!</p>
         </div>
 
         {/* First Row of Buttons */}

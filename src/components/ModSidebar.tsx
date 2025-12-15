@@ -1,4 +1,4 @@
-import { Ban, AlertTriangle, Users, Server, Settings, Tag, UserCog, Unlock, Scale } from "lucide-react";
+import { Ban, AlertTriangle, Users, Tag, UserCog, Unlock, Scale, ShieldCheck } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import {
   Sidebar,
@@ -9,6 +9,7 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar";
 import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 type Role = "moderator" | "admin";
 
@@ -16,13 +17,11 @@ const allItems = [
   { title: "Ban", url: "/ban", icon: Ban },
   { title: "Warn", url: "/warn", icon: AlertTriangle },
   { title: "Lookup User", url: "/lookup", icon: Users },
-  { title: "Private Servers", url: "/player-data", icon: Server },
-  { title: "Game Settings", url: "/manage-mods", icon: Settings },
-  { title: "Promo Codes", url: "/promo-codes", icon: Tag },
   { title: "Player Editor", url: "/player-data", icon: UserCog },
-  { title: "Group Bans", url: "/manage-mods", icon: Users },
   { title: "Unban Player", url: "/unban", icon: Unlock },
-  { title: "Manage Appeals", url: "/manage-mods", icon: Scale },
+  { title: "Promo Codes", url: "/promo-codes", icon: Tag },
+  { title: "Manage Appeals", url: "/manage-appeals", icon: Scale },
+  { title: "Manage Mods", url: "/manage-mods", icon: ShieldCheck, adminOnly: true },
 ];
 
 interface ModSidebarProps {
@@ -31,10 +30,34 @@ interface ModSidebarProps {
 
 export function ModSidebar({ userRole }: ModSidebarProps) {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [username, setUsername] = useState<string>("");
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const fetchUsername = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data } = await supabase
+          .from('user_roles')
+          .select('discord_username')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+        
+        if (data?.discord_username) {
+          setUsername(data.discord_username);
+        } else {
+          // Extract username from email (format: username@modpanel.local)
+          const email = session.user.email || '';
+          const extractedUsername = email.split('@')[0];
+          setUsername(extractedUsername);
+        }
+      }
+    };
+    fetchUsername();
   }, []);
 
   const formatDateTime = (date: Date) => {
@@ -49,18 +72,25 @@ export function ModSidebar({ userRole }: ModSidebarProps) {
     });
   };
 
+  const filteredItems = allItems.filter(item => {
+    if ('adminOnly' in item && item.adminOnly) {
+      return userRole === 'admin';
+    }
+    return true;
+  });
+
   return (
     <Sidebar className="border-r border-sidebar-border bg-sidebar-background">
       <SidebarHeader className="border-b border-sidebar-border p-4 bg-muted/30">
         <div>
-          <h2 className="text-base font-semibold text-sidebar-foreground">Welcome Shawnyg!</h2>
+          <h2 className="text-base font-semibold text-sidebar-foreground">Welcome {username || 'Moderator'}!</h2>
           <p className="text-xs text-muted-foreground mt-1">{formatDateTime(currentTime)}</p>
         </div>
       </SidebarHeader>
 
       <SidebarContent className="px-2 py-2">
         <SidebarMenu>
-          {allItems.map((item) => (
+          {filteredItems.map((item) => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton asChild>
                 <NavLink
