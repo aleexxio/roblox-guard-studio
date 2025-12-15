@@ -12,8 +12,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 // Tester Roblox IDs that can skip appeal timer
 const TESTER_ROBLOX_IDS = [
-  '123456789', // Add your tester IDs here
-  '987654321',
+  '2487341672', // aleexxio
 ];
 
 serve(async (req) => {
