@@ -19,13 +19,11 @@ export default function Ban() {
   const [fetchingUser, setFetchingUser] = useState(false);
   const { toast } = useToast();
 
-  const handleUsernameChange = async (value: string) => {
-    setUsername(value);
-    
-    if (value.trim().length > 0) {
+  const handleUsernameBlur = async () => {
+    if (username.trim().length > 0 && !robloxId) {
       setFetchingUser(true);
       try {
-        const user = await getUserByUsername(value.trim());
+        const user = await getUserByUsername(username.trim());
         if (user) {
           setRobloxId(user.id.toString());
           toast({
@@ -38,7 +36,6 @@ export default function Ban() {
             description: "No Roblox user found with that username",
             variant: "destructive",
           });
-          setRobloxId("");
         }
       } catch (error: any) {
         toast({
@@ -52,13 +49,11 @@ export default function Ban() {
     }
   };
 
-  const handleRobloxIdChange = async (value: string) => {
-    setRobloxId(value);
-    
-    if (value.trim().length > 0 && !isNaN(Number(value))) {
+  const handleRobloxIdBlur = async () => {
+    if (robloxId.trim().length > 0 && !username && !isNaN(Number(robloxId))) {
       setFetchingUser(true);
       try {
-        const user = await getUserById(value.trim());
+        const user = await getUserById(robloxId.trim());
         if (user) {
           setUsername(user.name);
           toast({
@@ -71,7 +66,6 @@ export default function Ban() {
             description: "No Roblox user found with that ID",
             variant: "destructive",
           });
-          setUsername("");
         }
       } catch (error: any) {
         toast({
@@ -88,13 +82,59 @@ export default function Ban() {
   const handleBan = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!robloxId || !username) {
+    if (!robloxId && !username) {
       toast({
         title: "Error",
         description: "Please provide either a username or Roblox ID",
         variant: "destructive",
       });
       return;
+    }
+
+    // Auto-fetch if one is missing
+    let finalRobloxId = robloxId;
+    let finalUsername = username;
+
+    if (!robloxId && username) {
+      setFetchingUser(true);
+      try {
+        const user = await getUserByUsername(username.trim());
+        if (user) {
+          finalRobloxId = user.id.toString();
+          setRobloxId(finalRobloxId);
+        } else {
+          toast({
+            title: "User Not Found",
+            description: "No Roblox user found with that username",
+            variant: "destructive",
+          });
+          setFetchingUser(false);
+          return;
+        }
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to fetch user from Roblox",
+          variant: "destructive",
+        });
+        setFetchingUser(false);
+        return;
+      }
+      setFetchingUser(false);
+    }
+
+    if (!username && robloxId) {
+      setFetchingUser(true);
+      try {
+        const user = await getUserById(robloxId.trim());
+        if (user) {
+          finalUsername = user.name;
+          setUsername(finalUsername);
+        }
+      } catch (error) {
+        // Continue without username if fetch fails
+      }
+      setFetchingUser(false);
     }
     
     setLoading(true);
@@ -104,7 +144,7 @@ export default function Ban() {
       let { data: player, error: playerError } = await supabase
         .from('players')
         .select('id')
-        .eq('roblox_id', robloxId)
+        .eq('roblox_id', finalRobloxId)
         .maybeSingle();
 
       if (playerError) throw playerError;
@@ -113,7 +153,7 @@ export default function Ban() {
         // Create player if doesn't exist
         const { data: newPlayer, error: createError } = await supabase
           .from('players')
-          .insert({ roblox_id: robloxId, username: username })
+          .insert({ roblox_id: finalRobloxId, username: finalUsername || `Player_${finalRobloxId}` })
           .select('id')
           .single();
 
@@ -148,7 +188,7 @@ export default function Ban() {
 
       toast({
         title: "Player Banned",
-        description: `Player ${robloxId} has been banned for ${duration}.`,
+        description: `Player ${finalUsername || finalRobloxId} has been banned for ${duration}.`,
       });
       
       setRobloxId("");
@@ -181,13 +221,14 @@ export default function Ban() {
         <CardContent>
           <form onSubmit={handleBan} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="ban-username">Username</Label>
               <div className="relative">
                 <Input
-                  id="username"
+                  id="ban-username"
                   placeholder="Enter username"
                   value={username}
-                  onChange={(e) => handleUsernameChange(e.target.value)}
+                  onChange={(e) => setUsername(e.target.value)}
+                  onBlur={handleUsernameBlur}
                   disabled={fetchingUser}
                 />
                 {fetchingUser && (
@@ -199,13 +240,14 @@ export default function Ban() {
             <div className="text-center text-sm text-muted-foreground">OR</div>
 
             <div className="space-y-2">
-              <Label htmlFor="roblox-id">Roblox ID</Label>
+              <Label htmlFor="ban-roblox-id">Roblox ID</Label>
               <div className="relative">
                 <Input
-                  id="roblox-id"
+                  id="ban-roblox-id"
                   placeholder="Enter Roblox ID"
                   value={robloxId}
-                  onChange={(e) => handleRobloxIdChange(e.target.value)}
+                  onChange={(e) => setRobloxId(e.target.value)}
+                  onBlur={handleRobloxIdBlur}
                   disabled={fetchingUser}
                 />
                 {fetchingUser && (
