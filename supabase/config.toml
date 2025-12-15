@@ -1,1 +1,13 @@
 project_id = "ulcdxubnxhdcqkovtuxn"
+
+[functions.game-api]
+verify_jwt = false
+
+[functions.sync-discord-roles]
+verify_jwt = true
+
+[functions.create-moderator]
+verify_jwt = true
+
+[functions.delete-moderator]
+verify_jwt = true
