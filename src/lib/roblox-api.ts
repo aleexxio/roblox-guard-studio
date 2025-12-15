@@ -1,4 +1,6 @@
-// Roblox API utilities for fetching user information
+// Roblox API utilities for fetching user information via edge function proxy
+
+const PROXY_URL = "https://ulcdxubnxhdcqkovtuxn.supabase.co/functions/v1/roblox-proxy";
 
 export interface RobloxUser {
   id: number;
@@ -11,16 +13,7 @@ export interface RobloxUser {
  */
 export async function getUserByUsername(username: string): Promise<RobloxUser | null> {
   try {
-    const response = await fetch('https://users.roblox.com/v1/usernames/users', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        usernames: [username],
-        excludeBannedUsers: false,
-      }),
-    });
+    const response = await fetch(`${PROXY_URL}?action=username&value=${encodeURIComponent(username)}`);
 
     if (!response.ok) {
       throw new Error('Failed to fetch user from Roblox');
@@ -28,11 +21,11 @@ export async function getUserByUsername(username: string): Promise<RobloxUser | 
 
     const data = await response.json();
     
-    if (data.data && data.data.length > 0) {
+    if (data.found && data.user) {
       return {
-        id: data.data[0].id,
-        name: data.data[0].name,
-        displayName: data.data[0].displayName,
+        id: data.user.id,
+        name: data.user.name,
+        displayName: data.user.displayName,
       };
     }
 
@@ -48,22 +41,23 @@ export async function getUserByUsername(username: string): Promise<RobloxUser | 
  */
 export async function getUserById(userId: string): Promise<RobloxUser | null> {
   try {
-    const response = await fetch(`https://users.roblox.com/v1/users/${userId}`);
+    const response = await fetch(`${PROXY_URL}?action=id&value=${encodeURIComponent(userId)}`);
 
     if (!response.ok) {
-      if (response.status === 404) {
-        return null;
-      }
       throw new Error('Failed to fetch user from Roblox');
     }
 
     const data = await response.json();
     
-    return {
-      id: data.id,
-      name: data.name,
-      displayName: data.displayName,
-    };
+    if (data.found && data.user) {
+      return {
+        id: data.user.id,
+        name: data.user.name,
+        displayName: data.user.displayName,
+      };
+    }
+
+    return null;
   } catch (error) {
     console.error('Error fetching Roblox user by ID:', error);
     throw error;
