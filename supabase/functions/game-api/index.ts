@@ -10,6 +10,12 @@ const GAME_API_KEY = Deno.env.get('GAME_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
+// Tester Roblox IDs that can skip appeal timer
+const TESTER_ROBLOX_IDS = [
+  '123456789', // Add your tester IDs here
+  '987654321',
+];
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -354,6 +360,61 @@ serve(async (req) => {
       }
 
       return new Response(JSON.stringify({ success: true, message: 'Appeal submitted successfully' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Skip appeal timer (testers only)
+    if (action === 'skip_appeal_timer' && req.method === 'POST') {
+      const body = await req.json();
+      const { roblox_id } = body;
+
+      if (!roblox_id) {
+        return new Response(JSON.stringify({ error: 'Missing roblox_id' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Check if user is a tester
+      if (!TESTER_ROBLOX_IDS.includes(roblox_id.toString())) {
+        return new Response(JSON.stringify({ error: 'Unauthorized - not a tester' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Get player and active ban
+      const { data: player } = await supabase
+        .from('players')
+        .select('id')
+        .eq('roblox_id', roblox_id)
+        .single();
+
+      if (!player) {
+        return new Response(JSON.stringify({ error: 'Player not found' }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: ban, error: banError } = await supabase
+        .from('bans')
+        .update({ appealable_at: new Date().toISOString() })
+        .eq('player_id', player.id)
+        .eq('is_active', true)
+        .select()
+        .single();
+
+      if (banError || !ban) {
+        return new Response(JSON.stringify({ error: 'No active ban found' }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      console.log(`Appeal timer skipped for tester: ${roblox_id}`);
+      return new Response(JSON.stringify({ success: true, message: 'Appeal timer skipped' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
