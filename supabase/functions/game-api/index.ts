@@ -197,7 +197,7 @@ serve(async (req) => {
     // Update player data (for syncing from game)
     if (action === 'update_player' && req.method === 'POST') {
       const body = await req.json();
-      const { roblox_id, username, level, coins, gems, playtime_hours } = body;
+      const { roblox_id, username, money, xp, playtime_hours, dev_products, gamepasses } = body;
 
       if (!roblox_id || !username) {
         return new Response(JSON.stringify({ error: 'Missing required fields' }), {
@@ -212,10 +212,11 @@ serve(async (req) => {
         .upsert({
           roblox_id,
           username,
-          level: level || 1,
-          coins: coins || 0,
-          gems: gems || 0,
+          money: money || 0,
+          xp: xp || 0,
           playtime_hours: playtime_hours || 0,
+          dev_products: dev_products || [],
+          gamepasses: gamepasses || [],
           last_seen: new Date().toISOString(),
         }, {
           onConflict: 'roblox_id'

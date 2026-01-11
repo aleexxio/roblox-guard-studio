@@ -123,43 +123,46 @@ export type Database = {
       }
       players: {
         Row: {
-          coins: number | null
           created_at: string
-          gems: number | null
+          dev_products: Json | null
+          gamepasses: Json | null
           id: string
           join_date: string
           last_seen: string | null
-          level: number | null
+          money: number | null
           playtime_hours: number | null
           roblox_id: string
           updated_at: string
           username: string
+          xp: number | null
         }
         Insert: {
-          coins?: number | null
           created_at?: string
-          gems?: number | null
+          dev_products?: Json | null
+          gamepasses?: Json | null
           id?: string
           join_date?: string
           last_seen?: string | null
-          level?: number | null
+          money?: number | null
           playtime_hours?: number | null
           roblox_id: string
           updated_at?: string
           username: string
+          xp?: number | null
         }
         Update: {
-          coins?: number | null
           created_at?: string
-          gems?: number | null
+          dev_products?: Json | null
+          gamepasses?: Json | null
           id?: string
           join_date?: string
           last_seen?: string | null
-          level?: number | null
+          money?: number | null
           playtime_hours?: number | null
           roblox_id?: string
           updated_at?: string
           username?: string
+          xp?: number | null
         }
         Relationships: []
       }
