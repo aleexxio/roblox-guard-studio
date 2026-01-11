@@ -168,9 +168,10 @@ export default function Lookup() {
         lastSeen: player.last_seen 
           ? new Date(player.last_seen).toLocaleString() 
           : "Never",
-        level: player.level,
-        coins: player.coins,
-        gems: player.gems,
+        money: player.money || 0,
+        xp: player.xp || 0,
+        devProducts: player.dev_products || [],
+        gamepasses: player.gamepasses || [],
       });
     } catch (error: any) {
       toast({
@@ -263,24 +264,47 @@ export default function Lookup() {
                   <p className="font-medium">{playerData.joinDate}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Level</p>
-                  <p className="font-medium">{playerData.level}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Coins</p>
-                  <p className="font-medium">{playerData.coins.toLocaleString()}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Gems</p>
-                  <p className="font-medium">{playerData.gems}</p>
-                </div>
-                <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Total Playtime</p>
                   <p className="font-medium">{playerData.playtime}</p>
                 </div>
                 <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Money</p>
+                  <p className="font-medium">${playerData.money.toLocaleString()}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">XP</p>
+                  <p className="font-medium text-muted-foreground italic">Coming soon</p>
+                </div>
+                <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Last Seen</p>
                   <p className="font-medium">{playerData.lastSeen}</p>
+                </div>
+              </div>
+
+              <div className="mt-6 space-y-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Purchased Dev Products</p>
+                  {playerData.devProducts && playerData.devProducts.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {playerData.devProducts.map((product: any, index: number) => (
+                        <Badge key={index} variant="secondary">{product.name || product}</Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">No dev products purchased</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Purchased Gamepasses</p>
+                  {playerData.gamepasses && playerData.gamepasses.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {playerData.gamepasses.map((pass: any, index: number) => (
+                        <Badge key={index} variant="outline" className="border-primary text-primary">{pass.name || pass}</Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">No gamepasses purchased</p>
+                  )}
                 </div>
               </div>
             </CardContent>

@@ -48,9 +48,8 @@ export default function PlayerData() {
       const { error } = await supabase
         .from('players')
         .update({
-          level: player.level,
-          coins: player.coins,
-          gems: player.gems,
+          money: player.money,
+          xp: player.xp,
         })
         .eq('id', id);
 
@@ -122,9 +121,8 @@ export default function PlayerData() {
               <TableRow className="hover:bg-transparent border-border">
                 <TableHead>Roblox ID</TableHead>
                 <TableHead>Username</TableHead>
-                <TableHead>Level</TableHead>
-                <TableHead>Coins</TableHead>
-                <TableHead>Gems</TableHead>
+                <TableHead>Money</TableHead>
+                <TableHead>XP</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -137,36 +135,26 @@ export default function PlayerData() {
                     {editingId === player.id ? (
                       <Input
                         type="number"
-                        value={player.level}
-                        onChange={(e) => handleChange(player.id, 'level', e.target.value)}
-                        className="w-20"
-                      />
-                    ) : (
-                      player.level
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {editingId === player.id ? (
-                      <Input
-                        type="number"
-                        value={player.coins}
-                        onChange={(e) => handleChange(player.id, 'coins', e.target.value)}
+                        value={player.money || 0}
+                        onChange={(e) => handleChange(player.id, 'money', e.target.value)}
                         className="w-28"
                       />
                     ) : (
-                      player.coins.toLocaleString()
+                      `$${(player.money || 0).toLocaleString()}`
                     )}
                   </TableCell>
                   <TableCell>
                     {editingId === player.id ? (
                       <Input
                         type="number"
-                        value={player.gems}
-                        onChange={(e) => handleChange(player.id, 'gems', e.target.value)}
-                        className="w-20"
+                        value={player.xp || 0}
+                        onChange={(e) => handleChange(player.id, 'xp', e.target.value)}
+                        className="w-24"
+                        disabled
+                        title="XP functionality coming soon"
                       />
                     ) : (
-                      player.gems
+                      <span className="text-muted-foreground italic">Coming soon</span>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
