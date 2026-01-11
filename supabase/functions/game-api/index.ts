@@ -212,7 +212,7 @@ serve(async (req) => {
         .upsert({
           roblox_id,
           username,
-          money: money || 0,
+          money: money ?? 20000,
           xp: xp || 0,
           playtime_hours: playtime_hours || 0,
           dev_products: dev_products || [],
