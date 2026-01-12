@@ -39,8 +39,8 @@ serve(async (req) => {
       });
 
       if (!response.ok) {
-        console.error('Roblox API error:', response.status, await response.text());
-        return new Response(JSON.stringify({ error: 'Failed to fetch from Roblox API' }), {
+        console.error('Roblox API error:', response.status);
+        return new Response(JSON.stringify({ error: 'Unable to fetch user data. Please try again later.' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -76,8 +76,8 @@ serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
-        console.error('Roblox API error:', response.status, await response.text());
-        return new Response(JSON.stringify({ error: 'Failed to fetch from Roblox API' }), {
+        console.error('Roblox API error:', response.status);
+        return new Response(JSON.stringify({ error: 'Unable to fetch user data. Please try again later.' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -104,8 +104,7 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in roblox-proxy function:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    return new Response(JSON.stringify({ error: 'An error occurred. Please try again later.' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
