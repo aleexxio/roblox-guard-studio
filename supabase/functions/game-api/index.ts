@@ -419,6 +419,54 @@ serve(async (req) => {
       });
     }
 
+    // Get all banned group IDs
+    if (action === 'get_banned_groups') {
+      const { data: groups, error } = await supabase
+        .from('group_bans')
+        .select('group_id')
+        .eq('is_active', true);
+
+      if (error) {
+        console.error('Error fetching banned groups:', error);
+        return new Response(JSON.stringify({ error: 'Failed to fetch banned groups' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const groupIds = (groups || []).map(g => parseInt(g.group_id, 10)).filter(id => !isNaN(id));
+      
+      return new Response(JSON.stringify({ 
+        success: true, 
+        banned_groups: groupIds 
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Get all active promo codes
+    if (action === 'get_promo_codes') {
+      const { data: codes, error } = await supabase
+        .from('promo_codes')
+        .select('code, reward, uses, max_uses')
+        .eq('is_active', true);
+
+      if (error) {
+        console.error('Error fetching promo codes:', error);
+        return new Response(JSON.stringify({ error: 'Failed to fetch promo codes' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      return new Response(JSON.stringify({ 
+        success: true, 
+        promo_codes: codes || [] 
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     return new Response(JSON.stringify({ error: 'Unknown action' }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
