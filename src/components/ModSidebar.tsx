@@ -1,4 +1,4 @@
-import { Ban, AlertTriangle, Users, Tag, UserCog, Unlock, Scale, ShieldCheck } from "lucide-react";
+import { Ban, AlertTriangle, Users, Tag, UserCog, Unlock, Scale, ShieldCheck, UsersRound } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import {
   Sidebar,
@@ -19,7 +19,8 @@ const allItems = [
   { title: "Lookup User", url: "/lookup", icon: Users },
   { title: "Player Editor", url: "/player-data", icon: UserCog },
   { title: "Unban Player", url: "/unban", icon: Unlock },
-  { title: "Promo Codes", url: "/promo-codes", icon: Tag },
+  { title: "Promo Codes", url: "/promo-codes", icon: Tag, adminOnly: true },
+  { title: "Group Bans", url: "/group-bans", icon: UsersRound, adminOnly: true },
   { title: "Manage Appeals", url: "/manage-appeals", icon: Scale },
   { title: "Manage Mods", url: "/manage-mods", icon: ShieldCheck, adminOnly: true },
 ];

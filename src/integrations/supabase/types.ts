@@ -121,6 +121,36 @@ export type Database = {
           },
         ]
       }
+      group_bans: {
+        Row: {
+          created_at: string
+          created_by: string
+          group_id: string
+          group_name: string | null
+          id: string
+          is_active: boolean | null
+          reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          group_id: string
+          group_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          group_id?: string
+          group_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          reason?: string | null
+        }
+        Relationships: []
+      }
       players: {
         Row: {
           created_at: string

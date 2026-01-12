@@ -14,6 +14,7 @@ import Ban from "./pages/Ban";
 import Warn from "./pages/Warn";
 import Lookup from "./pages/Lookup";
 import PromoCodes from "./pages/PromoCodes";
+import GroupBans from "./pages/GroupBans";
 import ManageMods from "./pages/ManageMods";
 import ManageAppeals from "./pages/ManageAppeals";
 import Unban from "./pages/Unban";
@@ -97,6 +98,7 @@ const AppContent = () => {
               {userRole === "admin" && (
                 <>
                   <Route path="/promo-codes" element={<PromoCodes />} />
+                  <Route path="/group-bans" element={<GroupBans />} />
                   <Route path="/manage-mods" element={<ManageMods />} />
                   <Route path="/unban" element={<Unban />} />
                   <Route path="/player-data" element={<PlayerData />} />
@@ -105,7 +107,6 @@ const AppContent = () => {
               )}
               {userRole === "moderator" && (
                 <>
-                  <Route path="/promo-codes" element={<PromoCodes />} />
                   <Route path="/unban" element={<Unban />} />
                   <Route path="/player-data" element={<PlayerData />} />
                   <Route path="/manage-appeals" element={<ManageAppeals />} />
