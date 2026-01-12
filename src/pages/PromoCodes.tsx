@@ -5,13 +5,13 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Infinity } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function PromoCodes() {
   const [code, setCode] = useState("");
   const [reward, setReward] = useState("");
-  const [maxUses, setMaxUses] = useState("100");
+  const [maxUses, setMaxUses] = useState("");
   const [codes, setCodes] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -45,12 +45,16 @@ export default function PromoCodes() {
     
     try {
       const { data: sessionData } = await supabase.auth.getSession();
+      
+      // If max_uses is empty or 0, set a very high number (effectively infinite)
+      const maxUsesValue = maxUses.trim() ? parseInt(maxUses) : 999999999;
+      
       const { error } = await supabase
         .from('promo_codes')
         .insert({
           code,
           reward,
-          max_uses: parseInt(maxUses),
+          max_uses: maxUsesValue,
           created_by: sessionData.session?.user?.id,
         });
 
@@ -63,7 +67,7 @@ export default function PromoCodes() {
       
       setCode("");
       setReward("");
-      setMaxUses("100");
+      setMaxUses("");
       fetchCodes();
     } catch (error: any) {
       toast({
@@ -98,6 +102,14 @@ export default function PromoCodes() {
     }
   };
 
+  const formatMaxUses = (value: number) => {
+    // Display as infinity if >= 999999999
+    if (value >= 999999999) {
+      return <Infinity className="h-4 w-4 inline" />;
+    }
+    return value.toLocaleString();
+  };
+
   return (
     <div className="p-8 space-y-6">
       <div>
@@ -114,7 +126,7 @@ export default function PromoCodes() {
           <form onSubmit={handleCreate} className="space-y-4">
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="code">Code</Label>
+                <Label htmlFor="code">Code *</Label>
                 <Input
                   id="code"
                   placeholder="e.g., SUMMER2024"
@@ -124,28 +136,27 @@ export default function PromoCodes() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="reward">Reward</Label>
+                <Label htmlFor="reward">Reward *</Label>
                 <Input
                   id="reward"
-                  placeholder="e.g., 500 Coins"
+                  placeholder="e.g., 500 Money"
                   value={reward}
                   onChange={(e) => setReward(e.target.value)}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="maxUses">Max Uses</Label>
+                <Label htmlFor="maxUses">Max Uses (leave empty for unlimited)</Label>
                 <Input
                   id="maxUses"
                   type="number"
-                  placeholder="100"
+                  placeholder="Unlimited"
                   value={maxUses}
                   onChange={(e) => setMaxUses(e.target.value)}
-                  required
                 />
               </div>
             </div>
-            <Button type="submit" className="bg-gradient-primary hover:opacity-90" disabled={loading}>
+            <Button type="submit" className="bg-secondary hover:bg-secondary/80" disabled={loading}>
               <Plus className="h-4 w-4 mr-2" />
               {loading ? "Creating..." : "Create Code"}
             </Button>
@@ -170,23 +181,31 @@ export default function PromoCodes() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {codes.map((item) => (
-                <TableRow key={item.id} className="border-border">
-                  <TableCell className="font-mono font-bold text-primary">{item.code}</TableCell>
-                  <TableCell>{item.reward}</TableCell>
-                  <TableCell>{item.uses}</TableCell>
-                  <TableCell>{item.max_uses}</TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDelete(item.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+              {codes.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    No promo codes yet
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                codes.map((item) => (
+                  <TableRow key={item.id} className="border-border">
+                    <TableCell className="font-mono font-bold text-primary">{item.code}</TableCell>
+                    <TableCell>{item.reward}</TableCell>
+                    <TableCell>{item.uses?.toLocaleString() || 0}</TableCell>
+                    <TableCell>{formatMaxUses(item.max_uses)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDelete(item.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>

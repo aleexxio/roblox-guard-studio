@@ -337,7 +337,8 @@ serve(async (req) => {
         });
       }
 
-      if (promoCode.uses >= promoCode.max_uses) {
+      // Only check max uses if it's not unlimited (less than 999999999)
+      if (promoCode.max_uses < 999999999 && promoCode.uses >= promoCode.max_uses) {
         return new Response(JSON.stringify({ 
           success: false, 
           error: 'Code has reached maximum uses' 

@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getUserByUsername, getUserById } from "@/lib/roblox-api";
+import { sendDiscordWebhook } from "@/lib/discord-webhook";
 import { Loader2 } from "lucide-react";
 
 const PRESET_REASONS = [
@@ -24,6 +25,7 @@ export default function Ban() {
   const [presetReason, setPresetReason] = useState("");
   const [customReason, setCustomReason] = useState("");
   const [duration, setDuration] = useState("");
+  const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetchingUser, setFetchingUser] = useState(false);
   const { toast } = useToast();
@@ -187,8 +189,12 @@ export default function Ban() {
       const appealableAt = new Date();
       appealableAt.setDate(appealableAt.getDate() + 14);
 
-      // Create ban
+      // Get current user info for webhook
       const { data: sessionData } = await supabase.auth.getSession();
+      const moderatorEmail = sessionData.session?.user?.email || 'Unknown';
+      const moderatorUsername = moderatorEmail.split('@')[0];
+
+      // Create ban
       const { error: banError } = await supabase
         .from('bans')
         .insert({
@@ -202,6 +208,17 @@ export default function Ban() {
 
       if (banError) throw banError;
 
+      // Send Discord webhook
+      await sendDiscordWebhook({
+        type: 'ban',
+        roblox_id: finalRobloxId,
+        username: finalUsername || `Player_${finalRobloxId}`,
+        reason,
+        notes,
+        duration: duration === 'permanent' ? 'Permanent' : duration,
+        moderator_username: moderatorUsername,
+      });
+
       toast({
         title: "Player Banned",
         description: `Player ${finalUsername || finalRobloxId} has been banned for ${duration}.`,
@@ -212,6 +229,7 @@ export default function Ban() {
       setPresetReason("");
       setCustomReason("");
       setDuration("");
+      setNotes("");
       setReasonType("preset");
     } catch (error: any) {
       toast({
@@ -324,6 +342,17 @@ export default function Ban() {
                   <SelectItem value="permanent">Permanent</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes (optional)</Label>
+              <Textarea
+                id="notes"
+                placeholder="Additional notes for the Discord log"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+              />
             </div>
 
             <Button type="submit" variant="destructive" className="w-full" disabled={loading || fetchingUser}>
