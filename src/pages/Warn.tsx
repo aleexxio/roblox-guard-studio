@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getUserByUsername, getUserById } from "@/lib/roblox-api";
+import { sendDiscordWebhook } from "@/lib/discord-webhook";
 import { Loader2 } from "lucide-react";
 
 export default function Warn() {
   const [robloxId, setRobloxId] = useState("");
   const [username, setUsername] = useState("");
   const [warning, setWarning] = useState("");
+  const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetchingUser, setFetchingUser] = useState(false);
   const { toast } = useToast();
@@ -158,8 +160,12 @@ export default function Warn() {
         player = newPlayer;
       }
 
-      // Create warning
+      // Get current user info for webhook
       const { data: sessionData } = await supabase.auth.getSession();
+      const moderatorEmail = sessionData.session?.user?.email || 'Unknown';
+      const moderatorUsername = moderatorEmail.split('@')[0];
+
+      // Create warning
       const { error: warnError } = await supabase
         .from('warnings')
         .insert({
@@ -170,6 +176,16 @@ export default function Warn() {
 
       if (warnError) throw warnError;
 
+      // Send Discord webhook
+      await sendDiscordWebhook({
+        type: 'warning',
+        roblox_id: finalRobloxId,
+        username: finalUsername || `Player_${finalRobloxId}`,
+        reason: warning,
+        notes,
+        moderator_username: moderatorUsername,
+      });
+
       toast({
         title: "Warning Issued",
         description: `Player ${finalUsername || finalRobloxId} has been warned.`,
@@ -178,6 +194,7 @@ export default function Warn() {
       setRobloxId("");
       setUsername("");
       setWarning("");
+      setNotes("");
     } catch (error: any) {
       toast({
         title: "Error",
@@ -251,7 +268,18 @@ export default function Warn() {
               />
             </div>
 
-            <Button type="submit" className="w-full bg-gradient-primary hover:opacity-90" disabled={loading || fetchingUser}>
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes (optional)</Label>
+              <Textarea
+                id="notes"
+                placeholder="Additional notes for the Discord log"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+              />
+            </div>
+
+            <Button type="submit" className="w-full bg-secondary hover:bg-secondary/80" disabled={loading || fetchingUser}>
               {loading ? "Issuing..." : "Issue Warning"}
             </Button>
           </form>

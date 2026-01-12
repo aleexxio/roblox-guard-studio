@@ -97,6 +97,38 @@ serve(async (req) => {
       });
     }
 
+    // Get group info by ID
+    if (action === 'group') {
+      const response = await fetch(`https://groups.roblox.com/v1/groups/${value}`);
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          return new Response(JSON.stringify({ found: false }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        console.error('Roblox Groups API error:', response.status);
+        return new Response(JSON.stringify({ error: 'Unable to fetch group data. Please try again later.' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const data = await response.json();
+      
+      return new Response(JSON.stringify({
+        found: true,
+        group: {
+          id: data.id,
+          name: data.name,
+          description: data.description,
+          memberCount: data.memberCount,
+        }
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     return new Response(JSON.stringify({ error: 'Unknown action' }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

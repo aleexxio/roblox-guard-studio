@@ -3,10 +3,44 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+
+async function getGroupInfo(groupId: string): Promise<{ name: string; memberCount: number } | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke('roblox-proxy', {
+      body: null,
+      headers: {},
+    });
+    
+    // Use fetch directly to call the edge function with query params
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/roblox-proxy?action=group&value=${groupId}`,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    
+    if (!response.ok) return null;
+    
+    const result = await response.json();
+    if (result.found && result.group) {
+      return {
+        name: result.group.name,
+        memberCount: result.group.memberCount,
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching group info:', error);
+    return null;
+  }
+}
 
 export default function GroupBans() {
   const [groupId, setGroupId] = useState("");
@@ -14,6 +48,7 @@ export default function GroupBans() {
   const [reason, setReason] = useState("");
   const [groups, setGroups] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [fetchingGroup, setFetchingGroup] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -39,18 +74,70 @@ export default function GroupBans() {
     }
   };
 
+  const handleGroupIdBlur = async () => {
+    if (groupId.trim().length > 0 && !groupName) {
+      setFetchingGroup(true);
+      try {
+        const groupInfo = await getGroupInfo(groupId.trim());
+        if (groupInfo) {
+          setGroupName(groupInfo.name);
+          toast({
+            title: "Group Found",
+            description: `Found "${groupInfo.name}" (${groupInfo.memberCount.toLocaleString()} members)`,
+          });
+        } else {
+          toast({
+            title: "Group Not Found",
+            description: "No Roblox group found with that ID",
+            variant: "destructive",
+          });
+        }
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to fetch group from Roblox",
+          variant: "destructive",
+        });
+      } finally {
+        setFetchingGroup(false);
+      }
+    }
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!reason.trim()) {
+      toast({
+        title: "Error",
+        description: "Please provide a reason for the ban",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     
     try {
+      // Auto-fetch group name if not provided
+      let finalGroupName = groupName;
+      if (!finalGroupName && groupId) {
+        setFetchingGroup(true);
+        const groupInfo = await getGroupInfo(groupId.trim());
+        if (groupInfo) {
+          finalGroupName = groupInfo.name;
+          setGroupName(finalGroupName);
+        }
+        setFetchingGroup(false);
+      }
+
       const { data: sessionData } = await supabase.auth.getSession();
       const { error } = await supabase
         .from('group_bans')
         .insert({
           group_id: groupId,
-          group_name: groupName || null,
-          reason: reason || null,
+          group_name: finalGroupName || null,
+          reason: reason,
           created_by: sessionData.session?.user?.id,
         });
 
@@ -58,7 +145,7 @@ export default function GroupBans() {
 
       toast({
         title: "Group Banned",
-        description: `Group ID "${groupId}" has been banned.`,
+        description: `Group "${finalGroupName || groupId}" has been banned.`,
       });
       
       setGroupId("");
@@ -112,37 +199,47 @@ export default function GroupBans() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleCreate} className="space-y-4">
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="groupId">Group ID</Label>
-                <Input
-                  id="groupId"
-                  placeholder="e.g., 12345678"
-                  value={groupId}
-                  onChange={(e) => setGroupId(e.target.value)}
-                  required
-                />
+                <Label htmlFor="groupId">Group ID *</Label>
+                <div className="relative">
+                  <Input
+                    id="groupId"
+                    placeholder="e.g., 12345678"
+                    value={groupId}
+                    onChange={(e) => setGroupId(e.target.value)}
+                    onBlur={handleGroupIdBlur}
+                    disabled={fetchingGroup}
+                    required
+                  />
+                  {fetchingGroup && (
+                    <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="groupName">Group Name (optional)</Label>
+                <Label htmlFor="groupName">Group Name (auto-filled)</Label>
                 <Input
                   id="groupName"
-                  placeholder="e.g., Exploiters United"
+                  placeholder="Auto-populated from Roblox"
                   value={groupName}
                   onChange={(e) => setGroupName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="reason">Reason (optional)</Label>
-                <Input
-                  id="reason"
-                  placeholder="e.g., Known exploiter group"
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
+                  disabled={fetchingGroup}
                 />
               </div>
             </div>
-            <Button type="submit" className="bg-gradient-primary hover:opacity-90" disabled={loading}>
+            <div className="space-y-2">
+              <Label htmlFor="reason">Reason *</Label>
+              <Textarea
+                id="reason"
+                placeholder="e.g., Known exploiter group, Harassment group..."
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                required
+                rows={3}
+              />
+            </div>
+            <Button type="submit" className="bg-secondary hover:bg-secondary/80" disabled={loading || fetchingGroup}>
               <Plus className="h-4 w-4 mr-2" />
               {loading ? "Banning..." : "Ban Group"}
             </Button>
