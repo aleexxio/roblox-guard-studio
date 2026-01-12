@@ -15,6 +15,34 @@ const TESTER_ROBLOX_IDS = [
   '2487341672', // aleexxio
 ];
 
+// In-memory rate limiting (resets on cold start)
+const requestCounts = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(key: string, maxRequests: number, windowMs: number): boolean {
+  const now = Date.now();
+  const record = requestCounts.get(key) || { count: 0, resetAt: now + windowMs };
+  
+  if (now > record.resetAt) {
+    record.count = 0;
+    record.resetAt = now + windowMs;
+  }
+  
+  record.count++;
+  requestCounts.set(key, record);
+  
+  return record.count <= maxRequests;
+}
+
+// Clean up old entries periodically to prevent memory leaks
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, record] of requestCounts.entries()) {
+    if (now > record.resetAt) {
+      requestCounts.delete(key);
+    }
+  }
+}, 60000); // Clean up every minute
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -47,8 +75,19 @@ serve(async (req) => {
       });
     }
 
+    // Rate limit key based on action and roblox_id
+    const rateLimitKey = `${action}:${robloxId || 'global'}`;
+
     // Check if player is banned
     if (action === 'check_ban') {
+      // Rate limit: 30 requests per minute per roblox_id
+      if (!checkRateLimit(rateLimitKey, 30, 60000)) {
+        return new Response(JSON.stringify({ error: 'Too many requests. Please try again later.' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       if (!robloxId) {
         return new Response(JSON.stringify({ error: 'Missing roblox_id parameter' }), {
           status: 400,
@@ -135,6 +174,14 @@ serve(async (req) => {
 
     // Get player warnings
     if (action === 'get_warnings') {
+      // Rate limit: 20 requests per minute per roblox_id
+      if (!checkRateLimit(rateLimitKey, 20, 60000)) {
+        return new Response(JSON.stringify({ error: 'Too many requests. Please try again later.' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       if (!robloxId) {
         return new Response(JSON.stringify({ error: 'Missing roblox_id parameter' }), {
           status: 400,
@@ -170,6 +217,14 @@ serve(async (req) => {
 
     // Get player data
     if (action === 'get_player') {
+      // Rate limit: 30 requests per minute per roblox_id
+      if (!checkRateLimit(rateLimitKey, 30, 60000)) {
+        return new Response(JSON.stringify({ error: 'Too many requests. Please try again later.' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       if (!robloxId) {
         return new Response(JSON.stringify({ error: 'Missing roblox_id parameter' }), {
           status: 400,
@@ -196,6 +251,14 @@ serve(async (req) => {
 
     // Update player data (for syncing from game)
     if (action === 'update_player' && req.method === 'POST') {
+      // Rate limit: 10 requests per minute per roblox_id
+      if (!checkRateLimit(rateLimitKey, 10, 60000)) {
+        return new Response(JSON.stringify({ error: 'Too many requests. Please try again later.' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       const body = await req.json();
       const { roblox_id, username, money, xp, playtime_hours, dev_products, gamepasses } = body;
 
@@ -226,7 +289,7 @@ serve(async (req) => {
 
       if (error) {
         console.error('Error updating player:', error);
-        return new Response(JSON.stringify({ error: 'Failed to update player' }), {
+        return new Response(JSON.stringify({ error: 'An error occurred. Please try again later.' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -245,6 +308,15 @@ serve(async (req) => {
       if (!code || !roblox_id) {
         return new Response(JSON.stringify({ error: 'Missing code or roblox_id' }), {
           status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Rate limit: 10 redemption attempts per minute per roblox_id
+      const redeemKey = `redeem_code:${roblox_id}`;
+      if (!checkRateLimit(redeemKey, 10, 60000)) {
+        return new Response(JSON.stringify({ error: 'Too many redemption attempts. Please try again later.' }), {
+          status: 429,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
@@ -296,6 +368,15 @@ serve(async (req) => {
       if (!ban_id || !roblox_id || !username || !question1 || !question2 || !question3) {
         return new Response(JSON.stringify({ error: 'Missing required fields' }), {
           status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Rate limit: 5 appeal submissions per hour per roblox_id
+      const appealKey = `submit_appeal:${roblox_id}`;
+      if (!checkRateLimit(appealKey, 5, 3600000)) {
+        return new Response(JSON.stringify({ error: 'Too many appeal attempts. Please try again in an hour.' }), {
+          status: 429,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
@@ -353,7 +434,7 @@ serve(async (req) => {
 
       if (appealError) {
         console.error('Error creating appeal:', appealError);
-        return new Response(JSON.stringify({ error: 'Failed to submit appeal' }), {
+        return new Response(JSON.stringify({ error: 'An error occurred. Please try again later.' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -366,6 +447,14 @@ serve(async (req) => {
 
     // Skip appeal timer (testers only)
     if (action === 'skip_appeal_timer' && req.method === 'POST') {
+      // Rate limit: 5 requests per minute per roblox_id
+      if (!checkRateLimit(rateLimitKey, 5, 60000)) {
+        return new Response(JSON.stringify({ error: 'Too many requests. Please try again later.' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       const body = await req.json();
       const { roblox_id } = body;
 
@@ -378,7 +467,7 @@ serve(async (req) => {
 
       // Check if user is a tester
       if (!TESTER_ROBLOX_IDS.includes(roblox_id.toString())) {
-        return new Response(JSON.stringify({ error: 'Unauthorized - not a tester' }), {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
           status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -421,6 +510,14 @@ serve(async (req) => {
 
     // Get all banned group IDs
     if (action === 'get_banned_groups') {
+      // Rate limit: 30 requests per minute globally
+      if (!checkRateLimit('get_banned_groups:global', 30, 60000)) {
+        return new Response(JSON.stringify({ error: 'Too many requests. Please try again later.' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       const { data: groups, error } = await supabase
         .from('group_bans')
         .select('group_id')
@@ -428,7 +525,7 @@ serve(async (req) => {
 
       if (error) {
         console.error('Error fetching banned groups:', error);
-        return new Response(JSON.stringify({ error: 'Failed to fetch banned groups' }), {
+        return new Response(JSON.stringify({ error: 'An error occurred. Please try again later.' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -446,6 +543,14 @@ serve(async (req) => {
 
     // Get all active promo codes
     if (action === 'get_promo_codes') {
+      // Rate limit: 30 requests per minute globally
+      if (!checkRateLimit('get_promo_codes:global', 30, 60000)) {
+        return new Response(JSON.stringify({ error: 'Too many requests. Please try again later.' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       const { data: codes, error } = await supabase
         .from('promo_codes')
         .select('code, reward, uses, max_uses')
@@ -453,7 +558,7 @@ serve(async (req) => {
 
       if (error) {
         console.error('Error fetching promo codes:', error);
-        return new Response(JSON.stringify({ error: 'Failed to fetch promo codes' }), {
+        return new Response(JSON.stringify({ error: 'An error occurred. Please try again later.' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -474,8 +579,7 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in game-api function:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    return new Response(JSON.stringify({ error: 'An error occurred. Please try again later.' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

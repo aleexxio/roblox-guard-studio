@@ -31,11 +31,45 @@ serve(async (req) => {
 
     // Get Discord provider data from user metadata
     const discordData = user.user_metadata?.provider_id
-    const discordUsername = user.user_metadata?.full_name || user.user_metadata?.user_name
+    const rawUsername = user.user_metadata?.full_name || user.user_metadata?.user_name
     
     // Get Discord roles from the identities
     const discordIdentity = user.identities?.find(id => id.provider === 'discord')
-    const discordRoles = discordIdentity?.identity_data?.guilds?.[0]?.roles || []
+    
+    // Validate Discord identity data structure
+    if (!discordIdentity?.identity_data?.guilds?.[0]) {
+      console.error('Invalid Discord guild data structure')
+      return new Response(JSON.stringify({ 
+        error: 'Unable to verify Discord roles. Please try again.' 
+      }), { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    const discordRoles = discordIdentity.identity_data.guilds[0].roles || []
+
+    // Validate roles array - must be array of strings
+    if (!Array.isArray(discordRoles) || 
+        !discordRoles.every(r => typeof r === 'string' && r.length < 50)) {
+      console.error('Invalid Discord role data format')
+      return new Response(JSON.stringify({ 
+        error: 'Unable to verify Discord roles. Please try again.' 
+      }), { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    // Sanitize and validate username (limit to 100 chars)
+    const discordUsername = typeof rawUsername === 'string' 
+      ? rawUsername.substring(0, 100).trim() || 'Unknown'
+      : 'Unknown'
+
+    // Validate discord_id format (must be numeric string, 10-20 digits)
+    const validDiscordId = discordData && typeof discordData === 'string' && /^\d{10,20}$/.test(discordData)
+      ? discordData
+      : null
 
     // Determine role based on Discord roles
     let role: 'admin' | 'moderator' | null = null
@@ -61,7 +95,7 @@ serve(async (req) => {
       .upsert({
         user_id: user.id,
         role: role,
-        discord_id: discordData,
+        discord_id: validDiscordId,
         discord_username: discordUsername,
       }, {
         onConflict: 'user_id,role'
@@ -69,7 +103,7 @@ serve(async (req) => {
 
     if (roleError) {
       console.error('Error upserting role:', roleError)
-      return new Response(JSON.stringify({ error: 'Failed to sync role' }), {
+      return new Response(JSON.stringify({ error: 'An error occurred. Please try again later.' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
       })
@@ -86,7 +120,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in sync-discord-roles:', error)
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ error: 'An error occurred. Please try again later.' }),
       {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
