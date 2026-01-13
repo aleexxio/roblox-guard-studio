@@ -108,7 +108,6 @@ const AppContent = () => {
               {userRole === "moderator" && (
                 <>
                   <Route path="/unban" element={<Unban />} />
-                  <Route path="/player-data" element={<PlayerData />} />
                   <Route path="/manage-appeals" element={<ManageAppeals />} />
                 </>
               )}
