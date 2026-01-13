@@ -132,16 +132,51 @@ export default function GroupBans() {
       }
 
       const { data: sessionData } = await supabase.auth.getSession();
-      const { error } = await supabase
+      
+      // Check if group already exists (even if inactive)
+      const { data: existingBan } = await supabase
         .from('group_bans')
-        .insert({
-          group_id: groupId,
-          group_name: finalGroupName || null,
-          reason: reason,
-          created_by: sessionData.session?.user?.id,
-        });
+        .select('id, is_active')
+        .eq('group_id', groupId.trim())
+        .single();
 
-      if (error) throw error;
+      if (existingBan) {
+        if (existingBan.is_active) {
+          toast({
+            title: "Already Banned",
+            description: `Group "${finalGroupName || groupId}" is already banned.`,
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+        
+        // Reactivate the existing ban with updated info
+        const { error } = await supabase
+          .from('group_bans')
+          .update({
+            is_active: true,
+            group_name: finalGroupName || null,
+            reason: reason,
+            created_by: sessionData.session?.user?.id,
+            created_at: new Date().toISOString(),
+          })
+          .eq('id', existingBan.id);
+
+        if (error) throw error;
+      } else {
+        // Insert new ban
+        const { error } = await supabase
+          .from('group_bans')
+          .insert({
+            group_id: groupId.trim(),
+            group_name: finalGroupName || null,
+            reason: reason,
+            created_by: sessionData.session?.user?.id,
+          });
+
+        if (error) throw error;
+      }
 
       toast({
         title: "Group Banned",
