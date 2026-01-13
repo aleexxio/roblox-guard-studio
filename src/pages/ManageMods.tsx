@@ -138,7 +138,7 @@ export default function ManageMods() {
                 required
               />
             </div>
-            <Button type="submit" className="bg-gradient-primary hover:opacity-90" disabled={loading}>
+            <Button type="submit" variant="secondary" disabled={loading}>
               <UserPlus className="h-4 w-4 mr-2" />
               {loading ? "Creating..." : "Create Moderator"}
             </Button>
