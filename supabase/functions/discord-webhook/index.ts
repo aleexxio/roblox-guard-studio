@@ -110,7 +110,7 @@ serve(async (req) => {
         webhookUrl = DISCORD_BAN_WEBHOOK;
         embed = {
           title: 'Ban Log',
-          description: `**Username:** [${username}:${roblox_id}](${profileUrl})\n**Date:** ${dateStr}\n**Notes:** ${notesText}\n**Reason:**\n\`\`\`${reason}\`\`\``,
+          description: `**Username:** [${username}:${roblox_id}](${profileUrl})\n**Date:** ${dateStr}\n**Notes:** ${notesText}\n\n**Reason:**\n\`\`\`${reason}\`\`\``,
           color: EMBED_COLOR,
           footer: {
             text: `Duration: ${duration || 'Permanent'} | Banned by ${moderator_username}`,
@@ -122,7 +122,7 @@ serve(async (req) => {
         webhookUrl = DISCORD_WARNING_WEBHOOK;
         embed = {
           title: 'Warning Log',
-          description: `**Username:** [${username}:${roblox_id}](${profileUrl})\n**Date:** ${dateStr}\n**Notes:** ${notesText}\n**Reason:**\n\`\`\`${reason}\`\`\``,
+          description: `**Username:** [${username}:${roblox_id}](${profileUrl})\n**Date:** ${dateStr}\n**Notes:** ${notesText}\n\n**Reason:**\n\`\`\`${reason}\`\`\``,
           color: EMBED_COLOR,
           footer: {
             text: `Warning issued by ${moderator_username}`,
@@ -134,7 +134,7 @@ serve(async (req) => {
         webhookUrl = DISCORD_UNBAN_WEBHOOK;
         embed = {
           title: 'Unban Log',
-          description: `**Username:** [${username}:${roblox_id}](${profileUrl})\n**Date:** ${dateStr}\n**Notes:** ${notesText}\n**Reason:**\n\`\`\`${reason}\`\`\``,
+          description: `**Username:** [${username}:${roblox_id}](${profileUrl})\n**Date:** ${dateStr}\n**Notes:** ${notesText}\n\n**Reason:**\n\`\`\`${reason}\`\`\``,
           color: EMBED_COLOR,
           footer: {
             text: `Unbanned by ${moderator_username}`,
