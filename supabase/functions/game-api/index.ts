@@ -251,16 +251,37 @@ serve(async (req) => {
 
     // Update player data (for syncing from game)
     if (action === 'update_player' && req.method === 'POST') {
-      // Rate limit: 10 requests per minute per roblox_id
-      if (!checkRateLimit(rateLimitKey, 10, 60000)) {
+      // Parse body first so we can rate-limit per player even if roblox_id isn't in the query string
+      type UpdatePlayerBody = {
+        roblox_id?: string;
+        username?: string;
+        money?: number;
+        xp?: number;
+        playtime_hours?: number;
+        dev_products?: unknown;
+        gamepasses?: unknown;
+      };
+
+      let body: UpdatePlayerBody;
+      try {
+        body = (await req.json()) as UpdatePlayerBody;
+      } catch {
+        return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { roblox_id, username, money, xp, playtime_hours, dev_products, gamepasses } = body ?? {};
+
+      // Rate limit: 10 requests per minute per roblox_id (falls back to global if missing)
+      const updateRateLimitKey = `update_player:${roblox_id ?? 'global'}`;
+      if (!checkRateLimit(updateRateLimitKey, 10, 60000)) {
         return new Response(JSON.stringify({ error: 'Too many requests. Please try again later.' }), {
           status: 429,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-
-      const body = await req.json();
-      const { roblox_id, username, money, xp, playtime_hours, dev_products, gamepasses } = body;
 
       if (!roblox_id || !username) {
         return new Response(JSON.stringify({ error: 'Missing required fields' }), {
@@ -269,26 +290,78 @@ serve(async (req) => {
         });
       }
 
-      // Upsert player
+      // IMPORTANT: don't overwrite fields (like playtime_hours) with 0 just because they weren't provided.
+      // Many game sync calls only send some fields.
+
+      // Check if player already exists
+      const { data: existingPlayer, error: existingError } = await supabase
+        .from('players')
+        .select('roblox_id')
+        .eq('roblox_id', roblox_id)
+        .maybeSingle();
+
+      if (existingError) {
+        console.error('Error checking existing player:', existingError);
+        return new Response(JSON.stringify({ error: 'An error occurred. Please try again later.' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const nowIso = new Date().toISOString();
+
+      if (existingPlayer) {
+        const updateData: Record<string, unknown> = {
+          username,
+          last_seen: nowIso,
+        };
+
+        if (money !== undefined) updateData.money = money;
+        if (xp !== undefined) updateData.xp = xp;
+        if (playtime_hours !== undefined) updateData.playtime_hours = playtime_hours;
+        if (dev_products !== undefined) updateData.dev_products = dev_products;
+        if (gamepasses !== undefined) updateData.gamepasses = gamepasses;
+
+        const { data: player, error } = await supabase
+          .from('players')
+          .update(updateData)
+          .eq('roblox_id', roblox_id)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error updating player:', error);
+          return new Response(JSON.stringify({ error: 'An error occurred. Please try again later.' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        return new Response(JSON.stringify({ success: true, player }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Insert new player (set defaults only on first create)
+      const insertData = {
+        roblox_id,
+        username,
+        money: money ?? 20000,
+        xp: xp ?? 0,
+        playtime_hours: playtime_hours ?? 0,
+        dev_products: dev_products ?? [],
+        gamepasses: gamepasses ?? [],
+        last_seen: nowIso,
+      };
+
       const { data: player, error } = await supabase
         .from('players')
-        .upsert({
-          roblox_id,
-          username,
-          money: money ?? 20000,
-          xp: xp || 0,
-          playtime_hours: playtime_hours || 0,
-          dev_products: dev_products || [],
-          gamepasses: gamepasses || [],
-          last_seen: new Date().toISOString(),
-        }, {
-          onConflict: 'roblox_id'
-        })
+        .insert(insertData)
         .select()
         .single();
 
       if (error) {
-        console.error('Error updating player:', error);
+        console.error('Error inserting player:', error);
         return new Response(JSON.stringify({ error: 'An error occurred. Please try again later.' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
