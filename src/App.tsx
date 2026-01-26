@@ -9,7 +9,7 @@ import { ModSidebar } from "@/components/ModSidebar";
 import { Header } from "@/components/Header";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
-import Home from "./pages/Home";
+
 import Ban from "./pages/Ban";
 import Warn from "./pages/Warn";
 import Lookup from "./pages/Lookup";
@@ -91,7 +91,7 @@ const AppContent = () => {
           <Header />
           <main className="flex-1">
             <Routes>
-              <Route path="/" element={<Home />} />
+              <Route path="/" element={<Ban />} />
               <Route path="/ban" element={<Ban />} />
               <Route path="/warn" element={<Warn />} />
               <Route path="/lookup" element={<Lookup />} />
