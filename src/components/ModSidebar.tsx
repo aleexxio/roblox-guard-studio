@@ -18,7 +18,7 @@ const allItems = [
   { title: "Warn", url: "/warn", icon: AlertTriangle },
   { title: "Lookup User", url: "/lookup", icon: Users },
   { title: "Player Editor", url: "/player-data", icon: UserCog, adminOnly: true },
-  { title: "Unban Player", url: "/unban", icon: Unlock },
+  { title: "Unban Player", url: "/unban", icon: Unlock, adminOnly: true },
   { title: "Promo Codes", url: "/promo-codes", icon: Tag, adminOnly: true },
   { title: "Group Bans", url: "/group-bans", icon: UsersRound, adminOnly: true },
   { title: "Manage Appeals", url: "/manage-appeals", icon: Scale },

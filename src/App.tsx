@@ -106,10 +106,7 @@ const AppContent = () => {
                 </>
               )}
               {userRole === "moderator" && (
-                <>
-                  <Route path="/unban" element={<Unban />} />
-                  <Route path="/manage-appeals" element={<ManageAppeals />} />
-                </>
+                <Route path="/manage-appeals" element={<ManageAppeals />} />
               )}
               <Route path="*" element={<NotFound />} />
             </Routes>
