@@ -88,7 +88,7 @@ const AppContent = () => {
       <div className="min-h-screen flex w-full">
         <ModSidebar userRole={userRole} />
         <div className="flex-1 flex flex-col">
-          <Header userRole={userRole} />
+          <Header />
           <main className="flex-1">
             <Routes>
               <Route path="/" element={<Home />} />
