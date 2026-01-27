@@ -364,7 +364,7 @@ export default function Lookup() {
                             <Badge variant={ban.is_active ? "destructive" : "outline"}>
                               {ban.is_active ? "Active" : "Inactive"}
                             </Badge>
-                            <Badge variant="outline">{ban.duration}</Badge>
+                            <Badge variant="outline">{ban.duration === 'permanent' ? 'Permanent' : ban.duration}</Badge>
                           </div>
                         </div>
                       </div>
