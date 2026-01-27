@@ -221,7 +221,7 @@ export default function Ban() {
 
       toast({
         title: "Player Banned",
-        description: `Player ${finalUsername || finalRobloxId} has been banned for ${duration}.`,
+        description: `Player ${finalUsername || finalRobloxId} has been banned for ${duration === 'permanent' ? 'Permanent' : duration}.`,
       });
       
       setRobloxId("");
