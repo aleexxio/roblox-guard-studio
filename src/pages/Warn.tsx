@@ -257,10 +257,10 @@ export default function Warn() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="warning">Warning Message</Label>
+              <Label htmlFor="warning">Reason</Label>
               <Textarea
                 id="warning"
-                placeholder="Enter warning message"
+                placeholder="Enter reason"
                 value={warning}
                 onChange={(e) => setWarning(e.target.value)}
                 required

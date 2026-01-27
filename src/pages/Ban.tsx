@@ -345,10 +345,9 @@ export default function Ban() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="notes">Notes (optional)</Label>
+              <Label htmlFor="notes">Notes</Label>
               <Textarea
                 id="notes"
-                placeholder="Additional notes for the Discord log"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
