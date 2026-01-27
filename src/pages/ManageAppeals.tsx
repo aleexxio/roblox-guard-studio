@@ -174,7 +174,7 @@ export default function ManageAppeals() {
             <div className="p-4 bg-muted/50 rounded-lg">
               <h4 className="font-semibold text-sm text-muted-foreground mb-1">Ban Details</h4>
               <p><strong>Reason:</strong> {selectedAppeal?.bans?.reason}</p>
-              <p><strong>Duration:</strong> {selectedAppeal?.bans?.duration}</p>
+              <p><strong>Duration:</strong> {selectedAppeal?.bans?.duration === 'permanent' ? 'Permanent' : selectedAppeal?.bans?.duration}</p>
               <p><strong>Banned At:</strong> {selectedAppeal?.bans?.banned_at && new Date(selectedAppeal.bans.banned_at).toLocaleString()}</p>
             </div>
 

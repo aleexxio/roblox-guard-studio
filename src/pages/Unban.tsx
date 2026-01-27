@@ -172,7 +172,7 @@ export default function Unban() {
                   <TableCell>{ban.players?.username}</TableCell>
                   <TableCell>{ban.reason}</TableCell>
                   <TableCell>{new Date(ban.banned_at).toLocaleDateString()}</TableCell>
-                  <TableCell>{ban.duration}</TableCell>
+                  <TableCell>{ban.duration === 'permanent' ? 'Permanent' : ban.duration}</TableCell>
                   <TableCell className="text-right">
                     <Button
                       onClick={() => openUnbanDialog(ban)}
@@ -209,10 +209,9 @@ export default function Unban() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="unban-notes">Notes (optional)</Label>
+              <Label htmlFor="unban-notes">Notes</Label>
               <Textarea
                 id="unban-notes"
-                placeholder="Additional notes for the Discord log"
                 value={unbanNotes}
                 onChange={(e) => setUnbanNotes(e.target.value)}
                 rows={2}
