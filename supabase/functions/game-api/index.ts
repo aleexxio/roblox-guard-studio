@@ -258,6 +258,7 @@ serve(async (req) => {
         money?: number;
         xp?: number;
         playtime_hours?: number;
+        playtime_seconds?: number;
         dev_products?: unknown;
         gamepasses?: unknown;
       };
@@ -272,7 +273,7 @@ serve(async (req) => {
         });
       }
 
-      const { roblox_id, username, money, xp, playtime_hours, dev_products, gamepasses } = body ?? {};
+      const { roblox_id, username, money, xp, playtime_hours, playtime_seconds, dev_products, gamepasses } = body ?? {};
 
       // Rate limit: 10 requests per minute per roblox_id (falls back to global if missing)
       const updateRateLimitKey = `update_player:${roblox_id ?? 'global'}`;
@@ -319,6 +320,7 @@ serve(async (req) => {
         if (money !== undefined) updateData.money = money;
         if (xp !== undefined) updateData.xp = xp;
         if (playtime_hours !== undefined) updateData.playtime_hours = playtime_hours;
+        if (playtime_seconds !== undefined) updateData.playtime_seconds = playtime_seconds;
         if (dev_products !== undefined) updateData.dev_products = dev_products;
         if (gamepasses !== undefined) updateData.gamepasses = gamepasses;
 
@@ -349,6 +351,7 @@ serve(async (req) => {
         money: money ?? 20000,
         xp: xp ?? 0,
         playtime_hours: playtime_hours ?? 0,
+        playtime_seconds: playtime_seconds ?? 0,
         dev_products: dev_products ?? [],
         gamepasses: gamepasses ?? [],
         last_seen: nowIso,

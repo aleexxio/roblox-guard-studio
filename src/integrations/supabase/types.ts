@@ -161,6 +161,7 @@ export type Database = {
           last_seen: string | null
           money: number | null
           playtime_hours: number | null
+          playtime_seconds: number | null
           roblox_id: string
           updated_at: string
           username: string
@@ -175,6 +176,7 @@ export type Database = {
           last_seen?: string | null
           money?: number | null
           playtime_hours?: number | null
+          playtime_seconds?: number | null
           roblox_id: string
           updated_at?: string
           username: string
@@ -189,6 +191,7 @@ export type Database = {
           last_seen?: string | null
           money?: number | null
           playtime_hours?: number | null
+          playtime_seconds?: number | null
           roblox_id?: string
           updated_at?: string
           username?: string

@@ -9,13 +9,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { getUserByUsername, getUserById } from "@/lib/roblox-api";
 
-const formatPlaytime = (totalHours: number): string => {
-  const totalSeconds = Math.floor(totalHours * 3600);
+const formatPlaytime = (totalSeconds: number): string => {
   const days = Math.floor(totalSeconds / 86400);
   const hours = Math.floor((totalSeconds % 86400) / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  return `${days}d ${hours}h ${minutes}m ${seconds}s`;
+  const secs = totalSeconds % 60;
+  return `${days}d ${hours}h ${minutes}m ${secs}s`;
 };
 
 export default function Lookup() {
@@ -173,7 +172,7 @@ export default function Lookup() {
         joinDate: new Date(player.join_date).toLocaleDateString(),
         warnings: warnings || [],
         bans: bans || [],
-        playtime: formatPlaytime(player.playtime_hours || 0),
+        playtime: formatPlaytime((player as any).playtime_seconds || 0),
         lastSeen: player.last_seen 
           ? new Date(player.last_seen).toLocaleString() 
           : "Never",
