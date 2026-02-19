@@ -151,6 +151,41 @@ export type Database = {
         }
         Relationships: []
       }
+      player_vehicles: {
+        Row: {
+          granted_at: string
+          granted_by: string | null
+          id: string
+          player_id: string
+          roblox_id: string
+          vehicle_name: string
+        }
+        Insert: {
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          player_id: string
+          roblox_id: string
+          vehicle_name: string
+        }
+        Update: {
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          player_id?: string
+          roblox_id?: string
+          vehicle_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_vehicles_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       players: {
         Row: {
           created_at: string

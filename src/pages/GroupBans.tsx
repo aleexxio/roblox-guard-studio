@@ -11,17 +11,16 @@ import { supabase } from "@/integrations/supabase/client";
 
 async function getGroupInfo(groupId: string): Promise<{ name: string; memberCount: number } | null> {
   try {
-    const { data, error } = await supabase.functions.invoke('roblox-proxy', {
-      body: null,
-      headers: {},
-    });
+    const { data: session } = await supabase.auth.getSession();
+    const token = session.session?.access_token;
     
-    // Use fetch directly to call the edge function with query params
     const response = await fetch(
       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/roblox-proxy?action=group&value=${groupId}`,
       {
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
       }
     );
@@ -119,7 +118,6 @@ export default function GroupBans() {
     setLoading(true);
     
     try {
-      // Auto-fetch group name if not provided
       let finalGroupName = groupName;
       if (!finalGroupName && groupId) {
         setFetchingGroup(true);
@@ -133,7 +131,6 @@ export default function GroupBans() {
 
       const { data: sessionData } = await supabase.auth.getSession();
       
-      // Check if group already exists (even if inactive)
       const { data: existingBan } = await supabase
         .from('group_bans')
         .select('id, is_active')
@@ -151,7 +148,6 @@ export default function GroupBans() {
           return;
         }
         
-        // Reactivate the existing ban with updated info
         const { error } = await supabase
           .from('group_bans')
           .update({
@@ -165,7 +161,6 @@ export default function GroupBans() {
 
         if (error) throw error;
       } else {
-        // Insert new ban
         const { error } = await supabase
           .from('group_bans')
           .insert({
@@ -207,9 +202,7 @@ export default function GroupBans() {
 
       if (error) throw error;
 
-      toast({
-        title: "Group Unbanned",
-      });
+      toast({ title: "Group Unbanned" });
       fetchGroups();
     } catch (error: any) {
       toast({

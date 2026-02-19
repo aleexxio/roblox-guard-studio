@@ -1,4 +1,4 @@
-import { Ban, AlertTriangle, Users, Tag, UserCog, Unlock, Scale, ShieldCheck, UsersRound } from "lucide-react";
+import { Ban, AlertTriangle, Users, Tag, UserCog, Unlock, ShieldCheck, UsersRound } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import {
   Sidebar,
@@ -14,14 +14,13 @@ import { supabase } from "@/integrations/supabase/client";
 type Role = "moderator" | "admin";
 
 const allItems = [
-  { title: "Ban", url: "/ban", icon: Ban },
-  { title: "Warn", url: "/warn", icon: AlertTriangle },
-  { title: "Lookup User", url: "/lookup", icon: Users },
-  { title: "Player Editor", url: "/player-data", icon: UserCog, adminOnly: true },
+  { title: "Ban Player", url: "/ban", icon: Ban },
+  { title: "Warn Player", url: "/warn", icon: AlertTriangle },
+  { title: "Lookup Player", url: "/lookup", icon: Users },
+  { title: "Data Management", url: "/player-data", icon: UserCog, adminOnly: true },
   { title: "Unban Player", url: "/unban", icon: Unlock, adminOnly: true },
   { title: "Promo Codes", url: "/promo-codes", icon: Tag, adminOnly: true },
   { title: "Group Bans", url: "/group-bans", icon: UsersRound, adminOnly: true },
-  { title: "Manage Appeals", url: "/manage-appeals", icon: Scale },
   { title: "Manage Mods", url: "/manage-mods", icon: ShieldCheck, adminOnly: true },
 ];
 
