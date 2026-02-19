@@ -618,6 +618,45 @@ serve(async (req) => {
       });
     }
 
+    // Get player's owned vehicles
+    if (action === 'get_player_vehicles') {
+      if (!checkRateLimit(rateLimitKey, 30, 60000)) {
+        return new Response(JSON.stringify({ error: 'Too many requests. Please try again later.' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (!robloxId) {
+        return new Response(JSON.stringify({ error: 'Missing roblox_id parameter' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: vehicles, error } = await supabase
+        .from('player_vehicles')
+        .select('vehicle_name')
+        .eq('roblox_id', robloxId);
+
+      if (error) {
+        console.error('Error fetching player vehicles:', error);
+        return new Response(JSON.stringify({ error: 'An error occurred.' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const vehicleNames = (vehicles || []).map(v => v.vehicle_name);
+      
+      return new Response(JSON.stringify({ 
+        success: true, 
+        vehicles: vehicleNames 
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Get all active promo codes
     if (action === 'get_promo_codes') {
       // Rate limit: 30 requests per minute globally
