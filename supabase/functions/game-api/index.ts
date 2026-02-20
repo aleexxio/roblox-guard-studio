@@ -777,6 +777,75 @@ serve(async (req) => {
       });
     }
 
+    // Sync vehicle registry from game → DB
+    // Called on server start so the panel always shows up-to-date vehicles
+    if (action === 'sync_vehicle_registry' && req.method === 'POST') {
+      if (!checkRateLimit('sync_vehicle_registry:global', 5, 60000)) {
+        return new Response(JSON.stringify({ error: 'Too many requests.' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      type RegistryEntry = {
+        name: string;
+        vehicle_name: string;
+        asset: string;
+        price: number;
+        restricted: boolean;
+        for_sale: boolean;
+        sort_order: number;
+        allowed_user_ids: number[];
+      };
+
+      let body: { registry?: RegistryEntry[] };
+      try {
+        body = await req.json();
+      } catch {
+        return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { registry } = body ?? {};
+      if (!Array.isArray(registry) || registry.length === 0) {
+        return new Response(JSON.stringify({ error: 'Missing or empty registry array' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const rows = registry.map(v => ({
+        name: v.name,
+        vehicle_name: v.vehicle_name,
+        asset: v.asset,
+        price: v.price ?? 0,
+        restricted: v.restricted ?? false,
+        for_sale: v.for_sale ?? false,
+        sort_order: v.sort_order ?? 0,
+        allowed_user_ids: v.allowed_user_ids ?? [],
+        updated_at: new Date().toISOString(),
+      }));
+
+      const { error: upsertErr } = await supabase
+        .from('vehicle_registry')
+        .upsert(rows, { onConflict: 'name' });
+
+      if (upsertErr) {
+        console.error('Error syncing vehicle registry:', upsertErr);
+        return new Response(JSON.stringify({ error: 'Failed to sync vehicle registry.' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      console.log(`Vehicle registry synced — ${rows.length} vehicles upserted`);
+      return new Response(JSON.stringify({ success: true, count: rows.length }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     return new Response(JSON.stringify({ error: 'Unknown action' }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -300,6 +300,45 @@ export type Database = {
         }
         Relationships: []
       }
+      vehicle_registry: {
+        Row: {
+          allowed_user_ids: Json
+          asset: string
+          for_sale: boolean
+          id: string
+          name: string
+          price: number
+          restricted: boolean
+          sort_order: number
+          updated_at: string
+          vehicle_name: string
+        }
+        Insert: {
+          allowed_user_ids?: Json
+          asset: string
+          for_sale?: boolean
+          id?: string
+          name: string
+          price?: number
+          restricted?: boolean
+          sort_order?: number
+          updated_at?: string
+          vehicle_name: string
+        }
+        Update: {
+          allowed_user_ids?: Json
+          asset?: string
+          for_sale?: boolean
+          id?: string
+          name?: string
+          price?: number
+          restricted?: boolean
+          sort_order?: number
+          updated_at?: string
+          vehicle_name?: string
+        }
+        Relationships: []
+      }
       warnings: {
         Row: {
           created_at: string
