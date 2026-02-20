@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,28 +8,45 @@ import { useToast } from "@/hooks/use-toast";
 import { Search, Save, Loader2, Plus, Trash2, Car } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-const VEHICLE_REGISTRY = [
-  "Car",
-  "Ferrari F8 Tributo",
-  "Lamborghini Huracan Performante",
-  "Ford Bronco",
-  "2020 Hongqi H9",
-  "Lawn Mower",
-  "2020 Lamborghini Aventador",
-  "Police Tahoe",
-  "Fire Engine",
-];
-
 export default function PlayerData() {
   const [usernameInput, setUsernameInput] = useState("");
   const [robloxIdInput, setRobloxIdInput] = useState("");
   const [player, setPlayer] = useState<any | null>(null);
   const [editedMoney, setEditedMoney] = useState<number>(0);
   const [ownedVehicles, setOwnedVehicles] = useState<string[]>([]);
+  const [vehicleRegistry, setVehicleRegistry] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [vehicleToAdd, setVehicleToAdd] = useState("");
   const { toast } = useToast();
+
+  // Load vehicle registry from DB on mount
+  useEffect(() => {
+    const loadRegistry = async () => {
+      const { data, error } = await supabase
+        .from('vehicle_registry')
+        .select('name')
+        .order('sort_order', { ascending: true });
+
+      if (!error && data && data.length > 0) {
+        setVehicleRegistry(data.map((v: any) => v.name));
+      } else {
+        // Fallback to hardcoded list if DB is empty (before first sync)
+        setVehicleRegistry([
+          "Car",
+          "Ferrari F8 Tributo",
+          "Lamborghini Huracan Performante",
+          "Ford Bronco",
+          "2020 Hongqi H9",
+          "Lawn Mower",
+          "2020 Lamborghini Aventador",
+          "Police Tahoe",
+          "Fire Engine",
+        ]);
+      }
+    };
+    loadRegistry();
+  }, []);
 
   const fetchPlayerByField = async (field: 'username' | 'roblox_id', value: string) => {
     setLoading(true);
@@ -37,7 +54,6 @@ export default function PlayerData() {
     setOwnedVehicles([]);
 
     try {
-      const query = supabase.from('players').select('*').limit(1).maybeSingle();
       const { data, error } = field === 'username'
         ? await supabase.from('players').select('*').ilike('username', value.trim()).limit(1).maybeSingle()
         : await supabase.from('players').select('*').eq('roblox_id', value.trim()).limit(1).maybeSingle();
@@ -52,11 +68,9 @@ export default function PlayerData() {
 
       setPlayer(data);
       setEditedMoney(data.money || 0);
-      // Auto-populate the other field
       setUsernameInput(data.username || "");
       setRobloxIdInput(data.roblox_id || "");
 
-      // Fetch owned vehicles
       const { data: vehicles, error: vErr } = await supabase
         .from('player_vehicles')
         .select('vehicle_name')
@@ -69,16 +83,6 @@ export default function PlayerData() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSearchByUsername = () => {
-    if (!usernameInput.trim()) return;
-    fetchPlayerByField('username', usernameInput);
-  };
-
-  const handleSearchByRobloxId = () => {
-    if (!robloxIdInput.trim()) return;
-    fetchPlayerByField('roblox_id', robloxIdInput);
   };
 
   const handleSaveMoney = async () => {
@@ -146,7 +150,7 @@ export default function PlayerData() {
     }
   };
 
-  const availableToGrant = VEHICLE_REGISTRY.filter(v => !ownedVehicles.includes(v));
+  const availableToGrant = vehicleRegistry.filter(v => !ownedVehicles.includes(v));
 
   return (
     <div className="p-8 space-y-6">
@@ -169,9 +173,9 @@ export default function PlayerData() {
                   placeholder="e.g. Law_Tactics"
                   value={usernameInput}
                   onChange={(e) => setUsernameInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearchByUsername()}
+                  onKeyDown={(e) => e.key === 'Enter' && fetchPlayerByField('username', usernameInput)}
                 />
-                <Button variant="secondary" onClick={handleSearchByUsername} disabled={loading || !usernameInput.trim()}>
+                <Button variant="secondary" onClick={() => fetchPlayerByField('username', usernameInput)} disabled={loading || !usernameInput.trim()}>
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                 </Button>
               </div>
@@ -183,9 +187,9 @@ export default function PlayerData() {
                   placeholder="e.g. 1590751364"
                   value={robloxIdInput}
                   onChange={(e) => setRobloxIdInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearchByRobloxId()}
+                  onKeyDown={(e) => e.key === 'Enter' && fetchPlayerByField('roblox_id', robloxIdInput)}
                 />
-                <Button variant="secondary" onClick={handleSearchByRobloxId} disabled={loading || !robloxIdInput.trim()}>
+                <Button variant="secondary" onClick={() => fetchPlayerByField('roblox_id', robloxIdInput)} disabled={loading || !robloxIdInput.trim()}>
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                 </Button>
               </div>
@@ -236,7 +240,9 @@ export default function PlayerData() {
                 <Car className="h-5 w-5" />
                 Vehicle Management
               </CardTitle>
-              <CardDescription>Grant or revoke vehicles for this player. Changes sync to the game on next join.</CardDescription>
+              <CardDescription>
+                Grant or revoke vehicles for this player. Vehicle list syncs automatically from your game server.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-2">
