@@ -21,7 +21,8 @@ const VEHICLE_REGISTRY = [
 ];
 
 export default function PlayerData() {
-  const [searchTerm, setSearchTerm] = useState("");
+  const [usernameInput, setUsernameInput] = useState("");
+  const [robloxIdInput, setRobloxIdInput] = useState("");
   const [player, setPlayer] = useState<any | null>(null);
   const [editedMoney, setEditedMoney] = useState<number>(0);
   const [ownedVehicles, setOwnedVehicles] = useState<string[]>([]);
@@ -30,31 +31,30 @@ export default function PlayerData() {
   const [vehicleToAdd, setVehicleToAdd] = useState("");
   const { toast } = useToast();
 
-  const handleSearch = async () => {
-    if (!searchTerm.trim()) return;
+  const fetchPlayerByField = async (field: 'username' | 'roblox_id', value: string) => {
     setLoading(true);
     setPlayer(null);
     setOwnedVehicles([]);
 
     try {
-      // Search by roblox_id or username
-      const { data, error } = await supabase
-        .from('players')
-        .select('*')
-        .or(`roblox_id.eq.${searchTerm.trim()},username.ilike.${searchTerm.trim()}`)
-        .limit(1)
-        .maybeSingle();
+      const query = supabase.from('players').select('*').limit(1).maybeSingle();
+      const { data, error } = field === 'username'
+        ? await supabase.from('players').select('*').ilike('username', value.trim()).limit(1).maybeSingle()
+        : await supabase.from('players').select('*').eq('roblox_id', value.trim()).limit(1).maybeSingle();
 
       if (error) throw error;
 
       if (!data) {
-        toast({ title: "Not Found", description: "No player found with that ID or username.", variant: "destructive" });
+        toast({ title: "Not Found", description: "No player found.", variant: "destructive" });
         setLoading(false);
         return;
       }
 
       setPlayer(data);
       setEditedMoney(data.money || 0);
+      // Auto-populate the other field
+      setUsernameInput(data.username || "");
+      setRobloxIdInput(data.roblox_id || "");
 
       // Fetch owned vehicles
       const { data: vehicles, error: vErr } = await supabase
@@ -69,6 +69,16 @@ export default function PlayerData() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSearchByUsername = () => {
+    if (!usernameInput.trim()) return;
+    fetchPlayerByField('username', usernameInput);
+  };
+
+  const handleSearchByRobloxId = () => {
+    if (!robloxIdInput.trim()) return;
+    fetchPlayerByField('roblox_id', robloxIdInput);
   };
 
   const handleSaveMoney = async () => {
@@ -145,29 +155,48 @@ export default function PlayerData() {
         <p className="text-muted-foreground">Search for a player to view and edit their data</p>
       </div>
 
-      <Card className="border-border shadow-glow-primary/20">
+      <Card className="border-border">
         <CardHeader>
           <CardTitle>Search Player</CardTitle>
-          <CardDescription>Enter Roblox ID or username to find a player</CardDescription>
+          <CardDescription>Enter a username or Roblox ID — the other field will populate automatically</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex gap-2">
-            <Input
-              placeholder="Roblox ID or username..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            />
-            <Button variant="secondary" onClick={handleSearch} disabled={loading}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-            </Button>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Username</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="e.g. Law_Tactics"
+                  value={usernameInput}
+                  onChange={(e) => setUsernameInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearchByUsername()}
+                />
+                <Button variant="secondary" onClick={handleSearchByUsername} disabled={loading || !usernameInput.trim()}>
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Roblox ID</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="e.g. 1590751364"
+                  value={robloxIdInput}
+                  onChange={(e) => setRobloxIdInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearchByRobloxId()}
+                />
+                <Button variant="secondary" onClick={handleSearchByRobloxId} disabled={loading || !robloxIdInput.trim()}>
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {player && (
         <>
-          <Card className="border-border shadow-glow-primary/20">
+          <Card className="border-border">
             <CardHeader>
               <CardTitle>Player Info — {player.username}</CardTitle>
               <CardDescription>Roblox ID: {player.roblox_id}</CardDescription>
@@ -201,13 +230,13 @@ export default function PlayerData() {
             </CardContent>
           </Card>
 
-          <Card className="border-border shadow-glow-primary/20">
+          <Card className="border-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Car className="h-5 w-5" />
                 Vehicle Management
               </CardTitle>
-              <CardDescription>Grant or revoke vehicles for this player</CardDescription>
+              <CardDescription>Grant or revoke vehicles for this player. Changes sync to the game on next join.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-2">

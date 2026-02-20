@@ -657,6 +657,95 @@ serve(async (req) => {
       });
     }
 
+    // Sync player-owned vehicles from in-game DataStore to the DB
+    // This is called on player join so the panel always shows the full list
+    if (action === 'sync_player_vehicles' && req.method === 'POST') {
+      if (!checkRateLimit(rateLimitKey, 20, 60000)) {
+        return new Response(JSON.stringify({ error: 'Too many requests.' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      let body: { roblox_id?: string; vehicles?: string[] };
+      try {
+        body = await req.json();
+      } catch {
+        return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { roblox_id, vehicles } = body ?? {};
+
+      if (!roblox_id || !Array.isArray(vehicles)) {
+        return new Response(JSON.stringify({ error: 'Missing roblox_id or vehicles array' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Look up the player record
+      const { data: player, error: playerErr } = await supabase
+        .from('players')
+        .select('id')
+        .eq('roblox_id', roblox_id)
+        .maybeSingle();
+
+      if (playerErr || !player) {
+        return new Response(JSON.stringify({ error: 'Player not found' }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Get vehicles already recorded for this player
+      const { data: existing } = await supabase
+        .from('player_vehicles')
+        .select('vehicle_name')
+        .eq('player_id', player.id);
+
+      const existingNames = new Set((existing || []).map((v: any) => v.vehicle_name));
+
+      // Insert any new vehicles the player owns in-game but not yet in DB
+      const toInsert = vehicles
+        .filter((v: string) => v && !existingNames.has(v))
+        .map((v: string) => ({
+          player_id: player.id,
+          roblox_id,
+          vehicle_name: v,
+          granted_by: null, // null = self-purchased in-game
+        }));
+
+      if (toInsert.length > 0) {
+        const { error: insertErr } = await supabase
+          .from('player_vehicles')
+          .insert(toInsert);
+
+        if (insertErr) {
+          console.error('Error syncing vehicles:', insertErr);
+          return new Response(JSON.stringify({ error: 'An error occurred syncing vehicles.' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+
+      // Also return the current full list (including admin-granted ones) so the game stays in sync
+      const { data: allVehicles } = await supabase
+        .from('player_vehicles')
+        .select('vehicle_name')
+        .eq('player_id', player.id);
+
+      return new Response(JSON.stringify({
+        success: true,
+        vehicles: (allVehicles || []).map((v: any) => v.vehicle_name),
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Get all active promo codes
     if (action === 'get_promo_codes') {
       // Rate limit: 30 requests per minute globally
