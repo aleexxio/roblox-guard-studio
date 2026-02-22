@@ -190,6 +190,8 @@ export type Database = {
         Row: {
           created_at: string
           dev_products: Json | null
+          dot_xp: number | null
+          fire_xp: number | null
           gamepasses: Json | null
           id: string
           join_date: string
@@ -197,7 +199,10 @@ export type Database = {
           money: number | null
           playtime_hours: number | null
           playtime_seconds: number | null
+          police_xp: number | null
           roblox_id: string
+          sheriff_xp: number | null
+          state_police_xp: number | null
           updated_at: string
           username: string
           xp: number | null
@@ -205,6 +210,8 @@ export type Database = {
         Insert: {
           created_at?: string
           dev_products?: Json | null
+          dot_xp?: number | null
+          fire_xp?: number | null
           gamepasses?: Json | null
           id?: string
           join_date?: string
@@ -212,7 +219,10 @@ export type Database = {
           money?: number | null
           playtime_hours?: number | null
           playtime_seconds?: number | null
+          police_xp?: number | null
           roblox_id: string
+          sheriff_xp?: number | null
+          state_police_xp?: number | null
           updated_at?: string
           username: string
           xp?: number | null
@@ -220,6 +230,8 @@ export type Database = {
         Update: {
           created_at?: string
           dev_products?: Json | null
+          dot_xp?: number | null
+          fire_xp?: number | null
           gamepasses?: Json | null
           id?: string
           join_date?: string
@@ -227,7 +239,10 @@ export type Database = {
           money?: number | null
           playtime_hours?: number | null
           playtime_seconds?: number | null
+          police_xp?: number | null
           roblox_id?: string
+          sheriff_xp?: number | null
+          state_police_xp?: number | null
           updated_at?: string
           username?: string
           xp?: number | null
