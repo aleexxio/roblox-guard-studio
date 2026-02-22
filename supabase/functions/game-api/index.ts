@@ -257,6 +257,11 @@ serve(async (req) => {
         username?: string;
         money?: number;
         xp?: number;
+        police_xp?: number;
+        sheriff_xp?: number;
+        state_police_xp?: number;
+        dot_xp?: number;
+        fire_xp?: number;
         playtime_hours?: number;
         playtime_seconds?: number;
         dev_products?: unknown;
@@ -273,7 +278,7 @@ serve(async (req) => {
         });
       }
 
-      const { roblox_id, username, money, xp, playtime_hours, playtime_seconds, dev_products, gamepasses } = body ?? {};
+      const { roblox_id, username, money, xp, police_xp, sheriff_xp, state_police_xp, dot_xp, fire_xp, playtime_hours, playtime_seconds, dev_products, gamepasses } = body ?? {};
 
       // Rate limit: 10 requests per minute per roblox_id (falls back to global if missing)
       const updateRateLimitKey = `update_player:${roblox_id ?? 'global'}`;
@@ -319,6 +324,11 @@ serve(async (req) => {
 
         if (money !== undefined) updateData.money = money;
         if (xp !== undefined) updateData.xp = xp;
+        if (police_xp !== undefined) updateData.police_xp = police_xp;
+        if (sheriff_xp !== undefined) updateData.sheriff_xp = sheriff_xp;
+        if (state_police_xp !== undefined) updateData.state_police_xp = state_police_xp;
+        if (dot_xp !== undefined) updateData.dot_xp = dot_xp;
+        if (fire_xp !== undefined) updateData.fire_xp = fire_xp;
         if (playtime_hours !== undefined) updateData.playtime_hours = playtime_hours;
         if (playtime_seconds !== undefined) updateData.playtime_seconds = playtime_seconds;
         if (dev_products !== undefined) updateData.dev_products = dev_products;
@@ -350,6 +360,11 @@ serve(async (req) => {
         username,
         money: money ?? 20000,
         xp: xp ?? 0,
+        police_xp: police_xp ?? 0,
+        sheriff_xp: sheriff_xp ?? 0,
+        state_police_xp: state_police_xp ?? 0,
+        dot_xp: dot_xp ?? 0,
+        fire_xp: fire_xp ?? 0,
         playtime_hours: playtime_hours ?? 0,
         playtime_seconds: playtime_seconds ?? 0,
         dev_products: dev_products ?? [],

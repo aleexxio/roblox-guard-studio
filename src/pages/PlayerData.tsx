@@ -13,6 +13,11 @@ export default function PlayerData() {
   const [robloxIdInput, setRobloxIdInput] = useState("");
   const [player, setPlayer] = useState<any | null>(null);
   const [editedMoney, setEditedMoney] = useState<number>(0);
+  const [editedPoliceXp, setEditedPoliceXp] = useState<number>(0);
+  const [editedSheriffXp, setEditedSheriffXp] = useState<number>(0);
+  const [editedStatePoliceXp, setEditedStatePoliceXp] = useState<number>(0);
+  const [editedDotXp, setEditedDotXp] = useState<number>(0);
+  const [editedFireXp, setEditedFireXp] = useState<number>(0);
   const [ownedVehicles, setOwnedVehicles] = useState<string[]>([]);
   const [vehicleRegistry, setVehicleRegistry] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -68,6 +73,11 @@ export default function PlayerData() {
 
       setPlayer(data);
       setEditedMoney(data.money || 0);
+      setEditedPoliceXp(data.police_xp || 0);
+      setEditedSheriffXp(data.sheriff_xp || 0);
+      setEditedStatePoliceXp(data.state_police_xp || 0);
+      setEditedDotXp(data.dot_xp || 0);
+      setEditedFireXp(data.fire_xp || 0);
       setUsernameInput(data.username || "");
       setRobloxIdInput(data.roblox_id || "");
 
@@ -85,17 +95,24 @@ export default function PlayerData() {
     }
   };
 
-  const handleSaveMoney = async () => {
+  const handleSavePlayerData = async () => {
     if (!player) return;
     setSaving(true);
     try {
       const { error } = await supabase
         .from('players')
-        .update({ money: editedMoney })
+        .update({
+          money: editedMoney,
+          police_xp: editedPoliceXp,
+          sheriff_xp: editedSheriffXp,
+          state_police_xp: editedStatePoliceXp,
+          dot_xp: editedDotXp,
+          fire_xp: editedFireXp,
+        })
         .eq('id', player.id);
       if (error) throw error;
-      setPlayer({ ...player, money: editedMoney });
-      toast({ title: "Saved", description: "Player money updated." });
+      setPlayer({ ...player, money: editedMoney, police_xp: editedPoliceXp, sheriff_xp: editedSheriffXp, state_police_xp: editedStatePoliceXp, dot_xp: editedDotXp, fire_xp: editedFireXp });
+      toast({ title: "Saved", description: "Player data updated." });
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
@@ -209,24 +226,57 @@ export default function PlayerData() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Money</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      type="number"
-                      value={editedMoney}
-                      onChange={(e) => setEditedMoney(parseInt(e.target.value) || 0)}
-                    />
-                    <Button onClick={handleSaveMoney} disabled={saving} className="bg-success hover:bg-success/90">
-                      <Save className="h-4 w-4 mr-2" />
-                      Save
-                    </Button>
-                  </div>
+                  <Input
+                    type="number"
+                    value={editedMoney}
+                    onChange={(e) => setEditedMoney(parseInt(e.target.value) || 0)}
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label>XP</Label>
-                  <Input value={player.xp || 0} disabled />
-                  <p className="text-xs text-muted-foreground">XP editing coming soon</p>
+                  <Label>Police XP</Label>
+                  <Input
+                    type="number"
+                    value={editedPoliceXp}
+                    onChange={(e) => setEditedPoliceXp(parseInt(e.target.value) || 0)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Sheriff XP</Label>
+                  <Input
+                    type="number"
+                    value={editedSheriffXp}
+                    onChange={(e) => setEditedSheriffXp(parseInt(e.target.value) || 0)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>State Police XP</Label>
+                  <Input
+                    type="number"
+                    value={editedStatePoliceXp}
+                    onChange={(e) => setEditedStatePoliceXp(parseInt(e.target.value) || 0)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>DOT XP</Label>
+                  <Input
+                    type="number"
+                    value={editedDotXp}
+                    onChange={(e) => setEditedDotXp(parseInt(e.target.value) || 0)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Fire XP</Label>
+                  <Input
+                    type="number"
+                    value={editedFireXp}
+                    onChange={(e) => setEditedFireXp(parseInt(e.target.value) || 0)}
+                  />
                 </div>
               </div>
+              <Button onClick={handleSavePlayerData} disabled={saving} className="bg-success hover:bg-success/90">
+                <Save className="h-4 w-4 mr-2" />
+                Save All
+              </Button>
               <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
                 <div>Last Seen: {player.last_seen ? new Date(player.last_seen).toLocaleString() : 'Never'}</div>
                 <div>Playtime: {player.playtime_seconds ? Math.floor(player.playtime_seconds / 3600) + 'h ' + Math.floor((player.playtime_seconds % 3600) / 60) + 'm' : '0h 0m'}</div>
