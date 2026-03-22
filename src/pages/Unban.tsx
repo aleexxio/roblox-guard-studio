@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Search, Unlock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { sendDiscordWebhook } from "@/lib/discord-webhook";
+import { logUnbanToSheets } from "@/lib/google-sheets-log";
 
 export default function Unban() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -84,6 +85,9 @@ export default function Unban() {
         notes: unbanNotes,
         moderator_username: moderatorUsername,
       });
+
+      // Update Google Sheets status to Unbanned
+      await logUnbanToSheets(selectedBan.players?.roblox_id || '');
 
       toast({
         title: "Player Unbanned",

@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getUserByUsername, getUserById } from "@/lib/roblox-api";
 import { sendDiscordWebhook } from "@/lib/discord-webhook";
+import { logBanToSheets } from "@/lib/google-sheets-log";
 import { Loader2 } from "lucide-react";
 
 const PRESET_REASONS = [
@@ -217,6 +218,14 @@ export default function Ban() {
         notes,
         duration: duration === 'permanent' ? 'Permanent' : duration,
         moderator_username: moderatorUsername,
+      });
+
+      // Log to Google Sheets
+      await logBanToSheets({
+        username: finalUsername || `Player_${finalRobloxId}`,
+        roblox_id: finalRobloxId,
+        duration: duration === 'permanent' ? 'Permanent' : duration,
+        reason,
       });
 
       toast({
