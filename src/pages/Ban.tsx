@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getUserByUsername, getUserById } from "@/lib/roblox-api";
 import { sendDiscordWebhook } from "@/lib/discord-webhook";
+import { logBanToSheets } from "@/lib/google-sheets-log";
 import { Loader2 } from "lucide-react";
 
 const PRESET_REASONS = [
