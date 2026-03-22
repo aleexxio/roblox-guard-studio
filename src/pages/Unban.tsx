@@ -86,6 +86,9 @@ export default function Unban() {
         moderator_username: moderatorUsername,
       });
 
+      // Update Google Sheets status to Unbanned
+      await logUnbanToSheets(selectedBan.players?.roblox_id || '');
+
       toast({
         title: "Player Unbanned",
         description: `Player ${selectedBan.players?.username || selectedBan.players?.roblox_id} has been unbanned.`,
