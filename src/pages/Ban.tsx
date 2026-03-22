@@ -220,6 +220,14 @@ export default function Ban() {
         moderator_username: moderatorUsername,
       });
 
+      // Log to Google Sheets
+      await logBanToSheets({
+        username: finalUsername || `Player_${finalRobloxId}`,
+        roblox_id: finalRobloxId,
+        duration: duration === 'permanent' ? 'Permanent' : duration,
+        reason,
+      });
+
       toast({
         title: "Player Banned",
         description: `Player ${finalUsername || finalRobloxId} has been banned for ${duration === 'permanent' ? 'Permanent' : duration}.`,
