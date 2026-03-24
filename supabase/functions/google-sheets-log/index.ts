@@ -19,21 +19,15 @@ function base64url(input: Uint8Array | string): string {
 }
 
 async function getAccessToken(): Promise<string> {
-  const keyJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_KEY');
-  if (!keyJson) throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY not configured');
-
-  let key: any;
-  try {
-    key = JSON.parse(keyJson);
-  } catch (e) {
-    throw new Error(`Failed to parse service account key: ${e.message}`);
-  }
+  const clientEmail = Deno.env.get('GOOGLE_SA_CLIENT_EMAIL');
+  const privateKey = Deno.env.get('GOOGLE_SA_PRIVATE_KEY');
+  if (!clientEmail || !privateKey) throw new Error('GOOGLE_SA_CLIENT_EMAIL or GOOGLE_SA_PRIVATE_KEY not configured');
 
   const now = Math.floor(Date.now() / 1000);
 
   const headerObj = { alg: 'RS256', typ: 'JWT' };
   const payloadObj = {
-    iss: key.client_email,
+    iss: clientEmail,
     scope: 'https://www.googleapis.com/auth/spreadsheets',
     aud: 'https://oauth2.googleapis.com/token',
     exp: now + 3600,
@@ -45,9 +39,10 @@ async function getAccessToken(): Promise<string> {
   const unsignedToken = `${headerB64}.${payloadB64}`;
 
   // Import the private key
-  const pemBody = key.private_key
+  const pemBody = privateKey
     .replace(/-----BEGIN PRIVATE KEY-----/, '')
     .replace(/-----END PRIVATE KEY-----/, '')
+    .replace(/\\n/g, '')
     .replace(/\n/g, '');
   const binaryKey = Uint8Array.from(atob(pemBody), (c: string) => c.charCodeAt(0));
 
