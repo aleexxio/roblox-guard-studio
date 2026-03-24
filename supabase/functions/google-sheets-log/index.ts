@@ -39,9 +39,10 @@ async function getAccessToken(): Promise<string> {
   const unsignedToken = `${headerB64}.${payloadB64}`;
 
   // Import the private key
-  const pemBody = key.private_key
+  const pemBody = privateKey
     .replace(/-----BEGIN PRIVATE KEY-----/, '')
     .replace(/-----END PRIVATE KEY-----/, '')
+    .replace(/\\n/g, '')
     .replace(/\n/g, '');
   const binaryKey = Uint8Array.from(atob(pemBody), (c: string) => c.charCodeAt(0));
 
