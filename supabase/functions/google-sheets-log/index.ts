@@ -5,29 +5,109 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const API_KEY = Deno.env.get('GOOGLE_SHEETS_API_KEY');
 const SPREADSHEET_ID = Deno.env.get('GOOGLE_SHEETS_SPREADSHEET_ID');
 const SHEETS_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
+
+function base64url(input: Uint8Array | string): string {
+  let b64: string;
+  if (typeof input === 'string') {
+    b64 = btoa(input);
+  } else {
+    b64 = btoa(String.fromCharCode(...input));
+  }
+  return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function getAccessToken(): Promise<string> {
+  const keyJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_KEY');
+  if (!keyJson) throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY not configured');
+
+  let key: any;
+  try {
+    key = JSON.parse(keyJson);
+  } catch (e) {
+    throw new Error(`Failed to parse service account key: ${e.message}`);
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+
+  const headerObj = { alg: 'RS256', typ: 'JWT' };
+  const payloadObj = {
+    iss: key.client_email,
+    scope: 'https://www.googleapis.com/auth/spreadsheets',
+    aud: 'https://oauth2.googleapis.com/token',
+    exp: now + 3600,
+    iat: now,
+  };
+
+  const headerB64 = base64url(JSON.stringify(headerObj));
+  const payloadB64 = base64url(JSON.stringify(payloadObj));
+  const unsignedToken = `${headerB64}.${payloadB64}`;
+
+  // Import the private key
+  const pemBody = key.private_key
+    .replace(/-----BEGIN PRIVATE KEY-----/, '')
+    .replace(/-----END PRIVATE KEY-----/, '')
+    .replace(/\n/g, '');
+  const binaryKey = Uint8Array.from(atob(pemBody), (c: string) => c.charCodeAt(0));
+
+  const cryptoKey = await crypto.subtle.importKey(
+    'pkcs8',
+    binaryKey,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+
+  const signature = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    cryptoKey,
+    new TextEncoder().encode(unsignedToken)
+  );
+
+  const sigB64 = base64url(new Uint8Array(signature));
+  const jwt = `${unsignedToken}.${sigB64}`;
+
+  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`,
+  });
+
+  if (!tokenRes.ok) {
+    const err = await tokenRes.text();
+    throw new Error(`Token exchange failed [${tokenRes.status}]: ${err}`);
+  }
+
+  const tokenData = await tokenRes.json();
+  return tokenData.access_token;
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  if (!API_KEY || !SPREADSHEET_ID) {
+  if (!SPREADSHEET_ID) {
     return new Response(JSON.stringify({ error: 'Google Sheets not configured' }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 
   try {
+    const accessToken = await getAccessToken();
+    const authHeaders = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    };
+
     const { action, username, roblox_id, duration, reason, date } = await req.json();
 
     if (action === 'log_ban') {
-      const url = `${SHEETS_BASE}/${SPREADSHEET_ID}/values/Sheet1!A:F:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS&key=${API_KEY}`;
+      const url = `${SHEETS_BASE}/${SPREADSHEET_ID}/values/Sheet1!A:F:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
       const res = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders,
         body: JSON.stringify({
           values: [[username, roblox_id, duration, reason, date, 'Banned']]
         })
@@ -39,16 +119,14 @@ serve(async (req) => {
         throw new Error(`Sheets API error [${res.status}]: ${errBody}`);
       }
 
-      // Apply red background to the status cell of the newly added row
-      // First find which row was just added
       const appendData = await res.json();
       const updatedRange = appendData.updates?.updatedRange;
       if (updatedRange) {
         const rowMatch = updatedRange.match(/(\d+)$/);
         if (rowMatch) {
-          const rowIndex = parseInt(rowMatch[1]) - 1; // 0-indexed
-          await applyStatusFormatting(rowIndex, 'Banned');
-          await applyDataValidation(rowIndex);
+          const rowIndex = parseInt(rowMatch[1]) - 1;
+          await applyStatusFormatting(rowIndex, 'Banned', accessToken);
+          await applyDataValidation(rowIndex, accessToken);
         }
       }
 
@@ -57,19 +135,17 @@ serve(async (req) => {
       });
 
     } else if (action === 'update_unban') {
-      // Search column B for the roblox_id to find the row
-      const searchUrl = `${SHEETS_BASE}/${SPREADSHEET_ID}/values/Sheet1!B:B?key=${API_KEY}`;
-      const searchRes = await fetch(searchUrl);
+      const searchUrl = `${SHEETS_BASE}/${SPREADSHEET_ID}/values/Sheet1!B:B`;
+      const searchRes = await fetch(searchUrl, { headers: authHeaders });
       if (!searchRes.ok) throw new Error('Failed to search spreadsheet');
 
       const searchData = await searchRes.json();
       const values = searchData.values || [];
-      
-      // Find the LAST matching row with this roblox_id (most recent ban)
+
       let targetRow = -1;
       for (let i = values.length - 1; i >= 0; i--) {
         if (values[i]?.[0] === roblox_id) {
-          targetRow = i + 1; // 1-indexed
+          targetRow = i + 1;
           break;
         }
       }
@@ -80,11 +156,10 @@ serve(async (req) => {
         });
       }
 
-      // Update column F to "Unbanned"
-      const updateUrl = `${SHEETS_BASE}/${SPREADSHEET_ID}/values/Sheet1!F${targetRow}?valueInputOption=USER_ENTERED&key=${API_KEY}`;
+      const updateUrl = `${SHEETS_BASE}/${SPREADSHEET_ID}/values/Sheet1!F${targetRow}?valueInputOption=USER_ENTERED`;
       const updateRes = await fetch(updateUrl, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders,
         body: JSON.stringify({ values: [['Unbanned']] })
       });
 
@@ -93,8 +168,7 @@ serve(async (req) => {
         throw new Error(`Sheets update error [${updateRes.status}]: ${errBody}`);
       }
 
-      // Apply green formatting
-      await applyStatusFormatting(targetRow - 1, 'Unbanned');
+      await applyStatusFormatting(targetRow - 1, 'Unbanned', accessToken);
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -113,27 +187,20 @@ serve(async (req) => {
   }
 });
 
-async function applyStatusFormatting(rowIndex: number, status: string) {
+async function applyStatusFormatting(rowIndex: number, status: string, accessToken: string) {
   const color = status === 'Banned'
-    ? { red: 1, green: 0, blue: 0 }        // Red
-    : { red: 0, green: 0.4, blue: 0 };       // Dark green
+    ? { red: 1, green: 0, blue: 0 }
+    : { red: 0, green: 0.4, blue: 0 };
+  const textColor = { red: 1, green: 1, blue: 1 };
 
-  const textColor = { red: 1, green: 1, blue: 1 }; // White text
-
-  const batchUrl = `${SHEETS_BASE}/${SPREADSHEET_ID}:batchUpdate?key=${API_KEY}`;
+  const batchUrl = `${SHEETS_BASE}/${SPREADSHEET_ID}:batchUpdate`;
   await fetch(batchUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
     body: JSON.stringify({
       requests: [{
         repeatCell: {
-          range: {
-            sheetId: 0,
-            startRowIndex: rowIndex,
-            endRowIndex: rowIndex + 1,
-            startColumnIndex: 5, // Column F
-            endColumnIndex: 6
-          },
+          range: { sheetId: 0, startRowIndex: rowIndex, endRowIndex: rowIndex + 1, startColumnIndex: 5, endColumnIndex: 6 },
           cell: {
             userEnteredFormat: {
               backgroundColor: color,
@@ -148,29 +215,17 @@ async function applyStatusFormatting(rowIndex: number, status: string) {
   });
 }
 
-async function applyDataValidation(rowIndex: number) {
-  const batchUrl = `${SHEETS_BASE}/${SPREADSHEET_ID}:batchUpdate?key=${API_KEY}`;
+async function applyDataValidation(rowIndex: number, accessToken: string) {
+  const batchUrl = `${SHEETS_BASE}/${SPREADSHEET_ID}:batchUpdate`;
   await fetch(batchUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
     body: JSON.stringify({
       requests: [{
         setDataValidation: {
-          range: {
-            sheetId: 0,
-            startRowIndex: rowIndex,
-            endRowIndex: rowIndex + 1,
-            startColumnIndex: 5,
-            endColumnIndex: 6
-          },
+          range: { sheetId: 0, startRowIndex: rowIndex, endRowIndex: rowIndex + 1, startColumnIndex: 5, endColumnIndex: 6 },
           rule: {
-            condition: {
-              type: 'ONE_OF_LIST',
-              values: [
-                { userEnteredValue: 'Banned' },
-                { userEnteredValue: 'Unbanned' }
-              ]
-            },
+            condition: { type: 'ONE_OF_LIST', values: [{ userEnteredValue: 'Banned' }, { userEnteredValue: 'Unbanned' }] },
             showCustomUi: true,
             strict: true
           }
