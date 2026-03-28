@@ -54,7 +54,7 @@ async function getAccessToken(): Promise<string> {
   const unsignedToken = `${headerB64}.${payloadB64}`;
 
   // Import the private key - handle various escape formats
-  const pemBody = privateKey
+  const pemBody = privateKeyRaw
     .replace(/-----BEGIN PRIVATE KEY-----/g, '')
     .replace(/-----END PRIVATE KEY-----/g, '')
     .replace(/\\n/g, '')
