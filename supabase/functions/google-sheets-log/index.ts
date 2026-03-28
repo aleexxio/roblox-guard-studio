@@ -27,11 +27,21 @@ async function getAccessToken(): Promise<string> {
     const jsonStr = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_KEY');
     if (jsonStr) {
       try {
+        // Try parsing directly first
         const sa = JSON.parse(jsonStr);
         clientEmail = sa.client_email;
         privateKeyRaw = sa.private_key;
       } catch {
-        throw new Error('Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY JSON');
+        try {
+          // Sometimes the value is double-escaped or wrapped in extra quotes
+          const cleaned = jsonStr.replace(/^\s*["']|["']\s*$/g, '').replace(/\\"/g, '"');
+          const sa = JSON.parse(cleaned);
+          clientEmail = sa.client_email;
+          privateKeyRaw = sa.private_key;
+        } catch (e2) {
+          console.error('JSON parse attempts failed. First 100 chars:', jsonStr.substring(0, 100));
+          throw new Error('Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY JSON. Make sure you pasted the raw file contents.');
+        }
       }
     }
   }
