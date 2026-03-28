@@ -38,12 +38,22 @@ async function getAccessToken(): Promise<string> {
   const payloadB64 = base64url(JSON.stringify(payloadObj));
   const unsignedToken = `${headerB64}.${payloadB64}`;
 
-  // Import the private key
+  // Import the private key - handle various escape formats
   const pemBody = privateKey
-    .replace(/-----BEGIN PRIVATE KEY-----/, '')
-    .replace(/-----END PRIVATE KEY-----/, '')
+    .replace(/-----BEGIN PRIVATE KEY-----/g, '')
+    .replace(/-----END PRIVATE KEY-----/g, '')
     .replace(/\\n/g, '')
-    .replace(/\n/g, '');
+    .replace(/\n/g, '')
+    .replace(/\r/g, '')
+    .replace(/\s/g, '')
+    .trim();
+  
+  console.log('PEM body length:', pemBody.length);
+  
+  if (pemBody.length < 100) {
+    throw new Error(`Private key appears truncated (${pemBody.length} chars). Please re-enter the full private_key value from your service account JSON file.`);
+  }
+  
   const binaryKey = Uint8Array.from(atob(pemBody), (c: string) => c.charCodeAt(0));
 
   const cryptoKey = await crypto.subtle.importKey(
