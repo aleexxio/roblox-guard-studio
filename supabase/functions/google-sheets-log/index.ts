@@ -19,9 +19,24 @@ function base64url(input: Uint8Array | string): string {
 }
 
 async function getAccessToken(): Promise<string> {
-  const clientEmail = Deno.env.get('GOOGLE_SA_CLIENT_EMAIL');
-  const privateKey = Deno.env.get('GOOGLE_SA_PRIVATE_KEY');
-  if (!clientEmail || !privateKey) throw new Error('GOOGLE_SA_CLIENT_EMAIL or GOOGLE_SA_PRIVATE_KEY not configured');
+  // Try individual secrets first, fall back to JSON secret
+  let clientEmail = Deno.env.get('GOOGLE_SA_CLIENT_EMAIL');
+  let privateKeyRaw = Deno.env.get('GOOGLE_SA_PRIVATE_KEY');
+  
+  if (!clientEmail || !privateKeyRaw || privateKeyRaw.length < 100) {
+    const jsonStr = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_KEY');
+    if (jsonStr) {
+      try {
+        const sa = JSON.parse(jsonStr);
+        clientEmail = sa.client_email;
+        privateKeyRaw = sa.private_key;
+      } catch {
+        throw new Error('Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY JSON');
+      }
+    }
+  }
+  
+  if (!clientEmail || !privateKeyRaw) throw new Error('Google SA credentials not configured');
 
   const now = Math.floor(Date.now() / 1000);
 
@@ -39,7 +54,7 @@ async function getAccessToken(): Promise<string> {
   const unsignedToken = `${headerB64}.${payloadB64}`;
 
   // Import the private key - handle various escape formats
-  const pemBody = privateKey
+  const pemBody = privateKeyRaw
     .replace(/-----BEGIN PRIVATE KEY-----/g, '')
     .replace(/-----END PRIVATE KEY-----/g, '')
     .replace(/\\n/g, '')
