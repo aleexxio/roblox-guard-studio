@@ -71,6 +71,20 @@ export default function Unban() {
 
       if (error) throw error;
 
+      // Call Roblox Open Cloud UnbanAsync API
+      try {
+        await supabase.functions.invoke('roblox-ban', {
+          body: {
+            action: 'unban',
+            roblox_id: selectedBan.players?.roblox_id || '',
+            reason: unbanReason,
+            notes: unbanNotes,
+          },
+        });
+      } catch (robloxError) {
+        console.error('Roblox unban API error (unban still recorded locally):', robloxError);
+      }
+
       // Get current user info for webhook
       const { data: sessionData } = await supabase.auth.getSession();
       const moderatorEmail = sessionData.session?.user?.email || 'Unknown';

@@ -12,7 +12,6 @@ export function Header() {
     <header className="h-16 border-b border-border bg-card flex items-center px-4 justify-between">
       <div className="flex items-center gap-4">
         <SidebarTrigger />
-        <h1 className="text-lg font-bold">Roblox Moderation Panel</h1>
       </div>
       <Button variant="ghost" size="sm" onClick={handleLogout}>
         <LogOut className="h-4 w-4 mr-2" />

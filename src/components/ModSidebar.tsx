@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -35,6 +36,9 @@ export function ModSidebar({ userRole }: ModSidebarProps) {
 
   return (
     <Sidebar className="border-r border-sidebar-border bg-sidebar-background">
+      <SidebarHeader className="border-b border-sidebar-border p-4">
+        <h1 className="text-lg font-bold text-sidebar-foreground">Game Moderation</h1>
+      </SidebarHeader>
       <SidebarContent className="px-2 py-2">
         <SidebarMenu>
           {filteredItems.map((item) => (
