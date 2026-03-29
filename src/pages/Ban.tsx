@@ -209,6 +209,21 @@ export default function Ban() {
 
       if (banError) throw banError;
 
+      // Call Roblox Open Cloud BanAsync API
+      try {
+        await supabase.functions.invoke('roblox-ban', {
+          body: {
+            action: 'ban',
+            roblox_id: finalRobloxId,
+            reason,
+            duration,
+            notes,
+          },
+        });
+      } catch (robloxError) {
+        console.error('Roblox ban API error (ban still recorded locally):', robloxError);
+      }
+
       // Send Discord webhook
       await sendDiscordWebhook({
         type: 'ban',
