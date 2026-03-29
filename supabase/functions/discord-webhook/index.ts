@@ -12,8 +12,8 @@ const DISCORD_UNBAN_WEBHOOK = Deno.env.get('DISCORD_UNBAN_WEBHOOK');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-// Color in decimal (B17F37 = 11632439)
-const EMBED_COLOR = 11632439;
+// No embed color (Discord default / no sidebar stripe)
+const EMBED_COLOR = null;
 
 interface WebhookPayload {
   type: 'ban' | 'warning' | 'unban';
