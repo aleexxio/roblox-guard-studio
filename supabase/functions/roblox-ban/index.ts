@@ -127,6 +127,8 @@ serve(async (req) => {
         },
       };
 
+      const apiUrl = `${baseUrl}?updateMask=gameJoinRestriction.active`;
+
       const response = await fetch(apiUrl, {
         method: 'PATCH',
         headers: {
