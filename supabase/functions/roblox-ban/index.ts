@@ -66,7 +66,7 @@ serve(async (req) => {
       });
     }
 
-    const apiUrl = `https://apis.roblox.com/cloud/v2/universes/${UNIVERSE_ID}/user-restrictions/${roblox_id}`;
+    const baseUrl = `https://apis.roblox.com/cloud/v2/universes/${UNIVERSE_ID}/user-restrictions/${roblox_id}`;
 
     if (action === 'ban') {
       const durationSeconds = durationToSeconds(duration || 'permanent');
