@@ -84,6 +84,12 @@ serve(async (req) => {
         restrictionPayload.gameJoinRestriction.duration = `${durationSeconds}s`;
       }
 
+      const updateMaskFields = ['gameJoinRestriction.active', 'gameJoinRestriction.displayReason', 'gameJoinRestriction.privateReason'];
+      if (durationSeconds !== null) {
+        updateMaskFields.push('gameJoinRestriction.duration');
+      }
+      const apiUrl = `${baseUrl}?updateMask=${updateMaskFields.join(',')}`;
+
       const response = await fetch(apiUrl, {
         method: 'PATCH',
         headers: {
