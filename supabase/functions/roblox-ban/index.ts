@@ -66,7 +66,7 @@ serve(async (req) => {
       });
     }
 
-    const apiUrl = `https://apis.roblox.com/cloud/v2/universes/${UNIVERSE_ID}/user-restrictions/${roblox_id}`;
+    const baseUrl = `https://apis.roblox.com/cloud/v2/universes/${UNIVERSE_ID}/user-restrictions/${roblox_id}`;
 
     if (action === 'ban') {
       const durationSeconds = durationToSeconds(duration || 'permanent');
@@ -83,6 +83,12 @@ serve(async (req) => {
       if (durationSeconds !== null) {
         restrictionPayload.gameJoinRestriction.duration = `${durationSeconds}s`;
       }
+
+      const updateMaskFields = ['gameJoinRestriction.active', 'gameJoinRestriction.displayReason', 'gameJoinRestriction.privateReason'];
+      if (durationSeconds !== null) {
+        updateMaskFields.push('gameJoinRestriction.duration');
+      }
+      const apiUrl = `${baseUrl}?updateMask=${updateMaskFields.join(',')}`;
 
       const response = await fetch(apiUrl, {
         method: 'PATCH',
@@ -120,6 +126,8 @@ serve(async (req) => {
           active: false,
         },
       };
+
+      const apiUrl = `${baseUrl}?updateMask=gameJoinRestriction.active`;
 
       const response = await fetch(apiUrl, {
         method: 'PATCH',
