@@ -17,3 +17,6 @@ verify_jwt = true
 
 [functions.discord-webhook]
 verify_jwt = false
+
+[functions.roblox-ban]
+verify_jwt = false
