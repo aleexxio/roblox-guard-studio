@@ -73,7 +73,7 @@ export default function Unban() {
 
       // Call Roblox Open Cloud UnbanAsync API
       try {
-        await supabase.functions.invoke('roblox-ban', {
+        const { data: robloxResult, error: robloxError } = await supabase.functions.invoke('roblox-ban', {
           body: {
             action: 'unban',
             roblox_id: selectedBan.players?.roblox_id || '',
@@ -81,8 +81,23 @@ export default function Unban() {
             notes: unbanNotes,
           },
         });
-      } catch (robloxError) {
-        console.error('Roblox unban API error (unban still recorded locally):', robloxError);
+
+        if (robloxError || (robloxResult && !robloxResult.success)) {
+          const detail = robloxResult?.error || robloxResult?.details || robloxError?.message || 'Unknown error';
+          console.error('Roblox unban API error:', detail);
+          toast({
+            title: "Warning",
+            description: `Unban saved locally but Roblox API failed: ${detail}`,
+            variant: "destructive",
+          });
+        }
+      } catch (robloxErr: any) {
+        console.error('Roblox unban API error (unban still recorded locally):', robloxErr);
+        toast({
+          title: "Warning",
+          description: `Unban saved locally but Roblox API call threw: ${robloxErr.message}`,
+          variant: "destructive",
+        });
       }
 
       // Get current user info for webhook

@@ -211,7 +211,7 @@ export default function Ban() {
 
       // Call Roblox Open Cloud BanAsync API
       try {
-        await supabase.functions.invoke('roblox-ban', {
+        const { data: robloxResult, error: robloxError } = await supabase.functions.invoke('roblox-ban', {
           body: {
             action: 'ban',
             roblox_id: finalRobloxId,
@@ -220,8 +220,23 @@ export default function Ban() {
             notes,
           },
         });
-      } catch (robloxError) {
-        console.error('Roblox ban API error (ban still recorded locally):', robloxError);
+
+        if (robloxError || (robloxResult && !robloxResult.success)) {
+          const detail = robloxResult?.error || robloxResult?.details || robloxError?.message || 'Unknown error';
+          console.error('Roblox ban API error:', detail);
+          toast({
+            title: "Warning",
+            description: `Ban saved locally but Roblox API failed: ${detail}`,
+            variant: "destructive",
+          });
+        }
+      } catch (robloxErr: any) {
+        console.error('Roblox ban API error (ban still recorded locally):', robloxErr);
+        toast({
+          title: "Warning",
+          description: `Ban saved locally but Roblox API call threw: ${robloxErr.message}`,
+          variant: "destructive",
+        });
       }
 
       // Send Discord webhook

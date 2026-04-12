@@ -151,6 +151,100 @@ export type Database = {
         }
         Relationships: []
       }
+      player_chat_logs: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          player_id: string | null
+          roblox_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          player_id?: string | null
+          roblox_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          player_id?: string | null
+          roblox_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_chat_logs_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      player_kill_logs: {
+        Row: {
+          created_at: string
+          id: string
+          killer_roblox_id: string
+          killer_username: string | null
+          victim_roblox_id: string
+          victim_username: string | null
+          weapon: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          killer_roblox_id: string
+          killer_username?: string | null
+          victim_roblox_id: string
+          victim_username?: string | null
+          weapon?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          killer_roblox_id?: string
+          killer_username?: string | null
+          victim_roblox_id?: string
+          victim_username?: string | null
+          weapon?: string | null
+        }
+        Relationships: []
+      }
+      player_session_logs: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          player_id: string | null
+          roblox_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          player_id?: string | null
+          roblox_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          player_id?: string | null
+          roblox_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_session_logs_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       player_vehicles: {
         Row: {
           granted_at: string

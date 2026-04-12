@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Loader2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Search, Loader2, LogIn, LogOut, MessageSquare, Sword } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { getUserByUsername, getUserById } from "@/lib/roblox-api";
@@ -21,6 +23,9 @@ export default function Lookup() {
   const [robloxId, setRobloxId] = useState("");
   const [username, setUsername] = useState("");
   const [playerData, setPlayerData] = useState<any>(null);
+  const [sessionLogs, setSessionLogs] = useState<any[]>([]);
+  const [chatLogs, setChatLogs] = useState<any[]>([]);
+  const [killLogs, setKillLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetchingUser, setFetchingUser] = useState(false);
   const { toast } = useToast();
@@ -165,6 +170,45 @@ export default function Lookup() {
         .order('banned_at', { ascending: false });
 
       if (bansError) throw bansError;
+
+      // Fetch session logs
+      const { data: sessions } = await supabase
+        .from('player_session_logs')
+        .select('*')
+        .eq('roblox_id', searchRobloxId)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      // Fetch chat logs
+      const { data: chats } = await supabase
+        .from('player_chat_logs')
+        .select('*')
+        .eq('roblox_id', searchRobloxId)
+        .order('created_at', { ascending: false })
+        .limit(200);
+
+      // Fetch kill logs (as killer or victim)
+      const { data: killsAsKiller } = await supabase
+        .from('player_kill_logs')
+        .select('*')
+        .eq('killer_roblox_id', searchRobloxId)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      const { data: killsAsVictim } = await supabase
+        .from('player_kill_logs')
+        .select('*')
+        .eq('victim_roblox_id', searchRobloxId)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      // Merge and sort all kills
+      const allKills = [...(killsAsKiller || []), ...(killsAsVictim || [])]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      setSessionLogs(sessions || []);
+      setChatLogs(chats || []);
+      setKillLogs(allKills);
 
       setPlayerData({
         username: player.username,
@@ -318,67 +362,199 @@ export default function Lookup() {
             </CardContent>
           </Card>
 
-          <Card className="border-border shadow-glow-primary/20">
-            <CardHeader>
-              <CardTitle>Warnings ({playerData.warnings.length})</CardTitle>
-              <CardDescription>All warnings issued to this player</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {playerData.warnings.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">No warnings found</p>
-              ) : (
-                <div className="space-y-3">
-                  {playerData.warnings.map((warning: any) => (
-                    <div key={warning.id} className="border border-border rounded-lg p-4 space-y-2">
-                      <div className="flex justify-between items-start">
-                        <p className="font-medium">{warning.message}</p>
-                        <Badge variant="outline" className="text-yellow-500 border-yellow-500">Warning</Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Issued: {new Date(warning.issued_at).toLocaleString()}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <Tabs defaultValue="moderation" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="moderation">Moderation</TabsTrigger>
+              <TabsTrigger value="sessions">Join/Leave</TabsTrigger>
+              <TabsTrigger value="chat">Chat Logs</TabsTrigger>
+              <TabsTrigger value="kills">Kills</TabsTrigger>
+            </TabsList>
 
-          <Card className="border-border shadow-glow-primary/20">
-            <CardHeader>
-              <CardTitle>Bans ({playerData.bans.length})</CardTitle>
-              <CardDescription>All bans issued to this player</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {playerData.bans.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">No bans found</p>
-              ) : (
-                <div className="space-y-3">
-                  {playerData.bans.map((ban: any) => (
-                    <div key={ban.id} className="border border-border rounded-lg p-4 space-y-2">
-                      <div className="flex justify-between items-start gap-2">
-                        <div className="flex-1">
-                          <p className="font-medium mb-1">{ban.reason}</p>
-                          <div className="flex gap-2 flex-wrap">
-                            <Badge variant={ban.is_active ? "destructive" : "outline"}>
-                              {ban.is_active ? "Active" : "Inactive"}
-                            </Badge>
-                            <Badge variant="outline">{ban.duration === 'permanent' ? 'Permanent' : ban.duration}</Badge>
+            <TabsContent value="moderation" className="space-y-6">
+              <Card className="border-border shadow-glow-primary/20">
+                <CardHeader>
+                  <CardTitle>Warnings ({playerData.warnings.length})</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {playerData.warnings.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-4">No warnings found</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {playerData.warnings.map((warning: any) => (
+                        <div key={warning.id} className="border border-border rounded-lg p-4 space-y-2">
+                          <div className="flex justify-between items-start">
+                            <p className="font-medium">{warning.message}</p>
+                            <Badge variant="outline" className="text-yellow-500 border-yellow-500">Warning</Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            Issued: {new Date(warning.issued_at).toLocaleString()}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="border-border shadow-glow-primary/20">
+                <CardHeader>
+                  <CardTitle>Bans ({playerData.bans.length})</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {playerData.bans.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-4">No bans found</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {playerData.bans.map((ban: any) => (
+                        <div key={ban.id} className="border border-border rounded-lg p-4 space-y-2">
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="flex-1">
+                              <p className="font-medium mb-1">{ban.reason}</p>
+                              <div className="flex gap-2 flex-wrap">
+                                <Badge variant={ban.is_active ? "destructive" : "outline"}>
+                                  {ban.is_active ? "Active" : "Inactive"}
+                                </Badge>
+                                <Badge variant="outline">{ban.duration === 'permanent' ? 'Permanent' : ban.duration}</Badge>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-sm text-muted-foreground space-y-1">
+                            <p>Banned: {new Date(ban.banned_at).toLocaleString()}</p>
+                            {ban.expires_at && (
+                              <p>Expires: {new Date(ban.expires_at).toLocaleString()}</p>
+                            )}
                           </div>
                         </div>
-                      </div>
-                      <div className="text-sm text-muted-foreground space-y-1">
-                        <p>Banned: {new Date(ban.banned_at).toLocaleString()}</p>
-                        {ban.expires_at && (
-                          <p>Expires: {new Date(ban.expires_at).toLocaleString()}</p>
-                        )}
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="sessions">
+              <Card className="border-border shadow-glow-primary/20">
+                <CardHeader>
+                  <CardTitle>Join / Leave Logs ({sessionLogs.length})</CardTitle>
+                  <CardDescription>Recent session activity for this player</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {sessionLogs.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-4">No session logs found</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="hover:bg-transparent border-border">
+                          <TableHead>Event</TableHead>
+                          <TableHead>Timestamp</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {sessionLogs.map((log: any) => (
+                          <TableRow key={log.id} className="border-border">
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {log.event_type === 'join' ? (
+                                  <LogIn className="h-4 w-4 text-green-500" />
+                                ) : (
+                                  <LogOut className="h-4 w-4 text-red-500" />
+                                )}
+                                <span className={log.event_type === 'join' ? 'text-green-500' : 'text-red-500'}>
+                                  {log.event_type === 'join' ? 'Joined' : 'Left'}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell>{new Date(log.created_at).toLocaleString()}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="chat">
+              <Card className="border-border shadow-glow-primary/20">
+                <CardHeader>
+                  <CardTitle>Chat Logs ({chatLogs.length})</CardTitle>
+                  <CardDescription>Recent chat messages from this player</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {chatLogs.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-4">No chat logs found</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="hover:bg-transparent border-border">
+                          <TableHead>Message</TableHead>
+                          <TableHead className="w-[200px]">Timestamp</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {chatLogs.map((log: any) => (
+                          <TableRow key={log.id} className="border-border">
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <MessageSquare className="h-4 w-4 text-muted-foreground shrink-0" />
+                                <span>{log.message}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">{new Date(log.created_at).toLocaleString()}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="kills">
+              <Card className="border-border shadow-glow-primary/20">
+                <CardHeader>
+                  <CardTitle>Kill Logs ({killLogs.length})</CardTitle>
+                  <CardDescription>Players killed by and kills on this player</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {killLogs.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-4">No kill logs found</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="hover:bg-transparent border-border">
+                          <TableHead>Role</TableHead>
+                          <TableHead>Killer</TableHead>
+                          <TableHead>Victim</TableHead>
+                          <TableHead>Weapon</TableHead>
+                          <TableHead className="w-[200px]">Timestamp</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {killLogs.map((log: any) => {
+                          const isKiller = log.killer_roblox_id === playerData.robloxId;
+                          return (
+                            <TableRow key={log.id} className="border-border">
+                              <TableCell>
+                                <Badge variant={isKiller ? "destructive" : "outline"} className={!isKiller ? "border-yellow-500 text-yellow-500" : ""}>
+                                  <Sword className="h-3 w-3 mr-1" />
+                                  {isKiller ? 'Killer' : 'Victim'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>{log.killer_username || log.killer_roblox_id}</TableCell>
+                              <TableCell>{log.victim_username || log.victim_roblox_id}</TableCell>
+                              <TableCell>{log.weapon || '—'}</TableCell>
+                              <TableCell className="text-muted-foreground">{new Date(log.created_at).toLocaleString()}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </>
       )}
     </div>

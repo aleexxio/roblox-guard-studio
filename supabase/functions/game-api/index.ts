@@ -699,6 +699,129 @@ serve(async (req) => {
     }
 
     // Sync vehicle registry from game → DB
+    // Log player session event (join/leave)
+    if (action === 'log_session' && req.method === 'POST') {
+      if (!checkRateLimit(rateLimitKey, 30, 60000)) {
+        return new Response(JSON.stringify({ error: 'Too many requests.' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      let body: { roblox_id?: string; event_type?: string };
+      try { body = await req.json(); } catch {
+        return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { roblox_id: rid, event_type } = body ?? {};
+      if (!rid || !event_type || !['join', 'leave'].includes(event_type)) {
+        return new Response(JSON.stringify({ error: 'Missing roblox_id or invalid event_type' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: pl } = await supabase.from('players').select('id').eq('roblox_id', rid).maybeSingle();
+
+      const { error: insErr } = await supabase.from('player_session_logs').insert({
+        player_id: pl?.id || null, roblox_id: rid, event_type,
+      });
+
+      if (insErr) {
+        console.error('Error inserting session log:', insErr);
+        return new Response(JSON.stringify({ error: 'Failed to log session event' }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Log chat message
+    if (action === 'log_chat' && req.method === 'POST') {
+      if (!checkRateLimit(rateLimitKey, 60, 60000)) {
+        return new Response(JSON.stringify({ error: 'Too many requests.' }), {
+          status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      let body: { roblox_id?: string; message?: string };
+      try { body = await req.json(); } catch {
+        return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { roblox_id: rid, message: msg } = body ?? {};
+      if (!rid || !msg) {
+        return new Response(JSON.stringify({ error: 'Missing roblox_id or message' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: pl } = await supabase.from('players').select('id').eq('roblox_id', rid).maybeSingle();
+
+      const { error: insErr } = await supabase.from('player_chat_logs').insert({
+        player_id: pl?.id || null, roblox_id: rid, message: msg,
+      });
+
+      if (insErr) {
+        console.error('Error inserting chat log:', insErr);
+        return new Response(JSON.stringify({ error: 'Failed to log chat' }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Log player kill
+    if (action === 'log_kill' && req.method === 'POST') {
+      if (!checkRateLimit(rateLimitKey, 30, 60000)) {
+        return new Response(JSON.stringify({ error: 'Too many requests.' }), {
+          status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      let body: { killer_roblox_id?: string; victim_roblox_id?: string; killer_username?: string; victim_username?: string; weapon?: string };
+      try { body = await req.json(); } catch {
+        return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { killer_roblox_id, victim_roblox_id, killer_username, victim_username, weapon } = body ?? {};
+      if (!killer_roblox_id || !victim_roblox_id) {
+        return new Response(JSON.stringify({ error: 'Missing killer_roblox_id or victim_roblox_id' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { error: insErr } = await supabase.from('player_kill_logs').insert({
+        killer_roblox_id, victim_roblox_id,
+        killer_username: killer_username || null,
+        victim_username: victim_username || null,
+        weapon: weapon || null,
+      });
+
+      if (insErr) {
+        console.error('Error inserting kill log:', insErr);
+        return new Response(JSON.stringify({ error: 'Failed to log kill' }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Sync vehicle registry from game → DB
     // Called on server start so the panel always shows up-to-date vehicles
     if (action === 'sync_vehicle_registry' && req.method === 'POST') {
       if (!checkRateLimit('sync_vehicle_registry:global', 5, 60000)) {
