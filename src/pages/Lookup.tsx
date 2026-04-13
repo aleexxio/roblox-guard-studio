@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Loader2, LogIn, LogOut, MessageSquare, Sword } from "lucide-react";
+import { Search, Loader2, LogIn, LogOut, MessageSquare, Sword, Car, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { getUserByUsername, getUserById } from "@/lib/roblox-api";
@@ -26,6 +26,7 @@ export default function Lookup() {
   const [sessionLogs, setSessionLogs] = useState<any[]>([]);
   const [chatLogs, setChatLogs] = useState<any[]>([]);
   const [killLogs, setKillLogs] = useState<any[]>([]);
+  const [vehicles, setVehicles] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetchingUser, setFetchingUser] = useState(false);
   const { toast } = useToast();
@@ -37,23 +38,12 @@ export default function Lookup() {
         const user = await getUserByUsername(username.trim());
         if (user) {
           setRobloxId(user.id.toString());
-          toast({
-            title: "User Found",
-            description: `Found ${user.name} (ID: ${user.id})`,
-          });
+          toast({ title: "User Found", description: `Found ${user.name} (ID: ${user.id})` });
         } else {
-          toast({
-            title: "User Not Found",
-            description: "No Roblox user found with that username",
-            variant: "destructive",
-          });
+          toast({ title: "User Not Found", description: "No Roblox user found with that username", variant: "destructive" });
         }
       } catch (error: any) {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to fetch user from Roblox",
-          variant: "destructive",
-        });
+        toast({ title: "Error", description: error.message || "Failed to fetch user from Roblox", variant: "destructive" });
       } finally {
         setFetchingUser(false);
       }
@@ -67,23 +57,12 @@ export default function Lookup() {
         const user = await getUserById(robloxId.trim());
         if (user) {
           setUsername(user.name);
-          toast({
-            title: "User Found",
-            description: `Found ${user.name} (ID: ${user.id})`,
-          });
+          toast({ title: "User Found", description: `Found ${user.name} (ID: ${user.id})` });
         } else {
-          toast({
-            title: "User Not Found",
-            description: "No Roblox user found with that ID",
-            variant: "destructive",
-          });
+          toast({ title: "User Not Found", description: "No Roblox user found with that ID", variant: "destructive" });
         }
       } catch (error: any) {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to fetch user from Roblox",
-          variant: "destructive",
-        });
+        toast({ title: "Error", description: error.message || "Failed to fetch user from Roblox", variant: "destructive" });
       } finally {
         setFetchingUser(false);
       }
@@ -94,47 +73,34 @@ export default function Lookup() {
     e.preventDefault();
     
     if (!robloxId && !username) {
-      toast({
-        title: "Error",
-        description: "Please enter a username or Roblox ID",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Please enter a username or Roblox ID", variant: "destructive" });
       return;
     }
 
     setLoading(true);
     
     try {
-      // Determine search method
       let searchRobloxId = robloxId;
       
-      // If only username provided, fetch Roblox ID first
       if (!robloxId && username) {
         const user = await getUserByUsername(username.trim());
         if (user) {
           searchRobloxId = user.id.toString();
           setRobloxId(searchRobloxId);
         } else {
-          toast({
-            title: "User Not Found",
-            description: "No Roblox user found with that username",
-            variant: "destructive",
-          });
+          toast({ title: "User Not Found", description: "No Roblox user found with that username", variant: "destructive" });
           setPlayerData(null);
           setLoading(false);
           return;
         }
       }
 
-      // If only Roblox ID provided, fetch username
       if (robloxId && !username) {
         const user = await getUserById(robloxId.trim());
-        if (user) {
-          setUsername(user.name);
-        }
+        if (user) setUsername(user.name);
       }
 
-      // Get player data from database
+      // Get player data
       const { data: player, error: playerError } = await supabase
         .from('players')
         .select('*')
@@ -144,93 +110,50 @@ export default function Lookup() {
       if (playerError) throw playerError;
 
       if (!player) {
-        toast({
-          title: "Player Not Found",
-          description: `No player found with Roblox ID: ${searchRobloxId}. They may not have joined the game yet.`,
-          variant: "destructive",
-        });
+        toast({ title: "Player Not Found", description: `No player found with Roblox ID: ${searchRobloxId}. They may not have joined the game yet.`, variant: "destructive" });
         setPlayerData(null);
         return;
       }
 
-      // Get warnings with details
-      const { data: warnings, error: warningsError } = await supabase
-        .from('warnings')
-        .select('*')
-        .eq('player_id', player.id)
-        .order('issued_at', { ascending: false });
+      // Fetch all related data in parallel
+      const [warningsRes, bansRes, sessionsRes, chatsRes, killsKillerRes, killsVictimRes, vehiclesRes] = await Promise.all([
+        supabase.from('warnings').select('*').eq('player_id', player.id).order('issued_at', { ascending: false }),
+        supabase.from('bans').select('*').eq('player_id', player.id).order('banned_at', { ascending: false }),
+        supabase.from('player_session_logs').select('*').eq('roblox_id', searchRobloxId).order('created_at', { ascending: false }).limit(100),
+        supabase.from('player_chat_logs').select('*').eq('roblox_id', searchRobloxId).order('created_at', { ascending: false }).limit(200),
+        supabase.from('player_kill_logs').select('*').eq('killer_roblox_id', searchRobloxId).order('created_at', { ascending: false }).limit(100),
+        supabase.from('player_kill_logs').select('*').eq('victim_roblox_id', searchRobloxId).order('created_at', { ascending: false }).limit(100),
+        supabase.from('player_vehicles').select('*').eq('roblox_id', searchRobloxId).order('granted_at', { ascending: false }),
+      ]);
 
-      if (warningsError) throw warningsError;
-
-      // Get bans with details
-      const { data: bans, error: bansError } = await supabase
-        .from('bans')
-        .select('*')
-        .eq('player_id', player.id)
-        .order('banned_at', { ascending: false });
-
-      if (bansError) throw bansError;
-
-      // Fetch session logs
-      const { data: sessions } = await supabase
-        .from('player_session_logs')
-        .select('*')
-        .eq('roblox_id', searchRobloxId)
-        .order('created_at', { ascending: false })
-        .limit(100);
-
-      // Fetch chat logs
-      const { data: chats } = await supabase
-        .from('player_chat_logs')
-        .select('*')
-        .eq('roblox_id', searchRobloxId)
-        .order('created_at', { ascending: false })
-        .limit(200);
-
-      // Fetch kill logs (as killer or victim)
-      const { data: killsAsKiller } = await supabase
-        .from('player_kill_logs')
-        .select('*')
-        .eq('killer_roblox_id', searchRobloxId)
-        .order('created_at', { ascending: false })
-        .limit(100);
-
-      const { data: killsAsVictim } = await supabase
-        .from('player_kill_logs')
-        .select('*')
-        .eq('victim_roblox_id', searchRobloxId)
-        .order('created_at', { ascending: false })
-        .limit(100);
-
-      // Merge and sort all kills
-      const allKills = [...(killsAsKiller || []), ...(killsAsVictim || [])]
+      const allKills = [...(killsKillerRes.data || []), ...(killsVictimRes.data || [])]
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-      setSessionLogs(sessions || []);
-      setChatLogs(chats || []);
+      setSessionLogs(sessionsRes.data || []);
+      setChatLogs(chatsRes.data || []);
       setKillLogs(allKills);
+      setVehicles(vehiclesRes.data || []);
 
       setPlayerData({
         username: player.username,
         robloxId: player.roblox_id,
         joinDate: new Date(player.join_date).toLocaleDateString(),
-        warnings: warnings || [],
-        bans: bans || [],
+        warnings: warningsRes.data || [],
+        bans: bansRes.data || [],
         playtime: formatPlaytime((player as any).playtime_seconds || 0),
-        lastSeen: player.last_seen 
-          ? new Date(player.last_seen).toLocaleString() 
-          : "Never",
+        lastSeen: player.last_seen ? new Date(player.last_seen).toLocaleString() : "Never",
         money: player.money || 0,
         xp: player.xp || 0,
+        police_xp: (player as any).police_xp || 0,
+        sheriff_xp: (player as any).sheriff_xp || 0,
+        state_police_xp: (player as any).state_police_xp || 0,
+        dot_xp: (player as any).dot_xp || 0,
+        fire_xp: (player as any).fire_xp || 0,
         devProducts: player.dev_products || [],
         gamepasses: player.gamepasses || [],
       });
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to lookup player",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error.message || "Failed to lookup player", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -253,39 +176,18 @@ export default function Lookup() {
             <div className="space-y-2">
               <Label htmlFor="lookup-username">Username</Label>
               <div className="relative">
-                <Input
-                  id="lookup-username"
-                  placeholder="Enter username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  onBlur={handleUsernameBlur}
-                  disabled={fetchingUser}
-                />
-                {fetchingUser && (
-                  <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
-                )}
+                <Input id="lookup-username" placeholder="Enter username" value={username} onChange={(e) => setUsername(e.target.value)} onBlur={handleUsernameBlur} disabled={fetchingUser} />
+                {fetchingUser && <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />}
               </div>
             </div>
-
             <div className="text-center text-sm text-muted-foreground">OR</div>
-
             <div className="space-y-2">
               <Label htmlFor="lookup-roblox-id">Roblox ID</Label>
               <div className="relative">
-                <Input
-                  id="lookup-roblox-id"
-                  placeholder="Enter Roblox ID"
-                  value={robloxId}
-                  onChange={(e) => setRobloxId(e.target.value)}
-                  onBlur={handleRobloxIdBlur}
-                  disabled={fetchingUser}
-                />
-                {fetchingUser && (
-                  <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
-                )}
+                <Input id="lookup-roblox-id" placeholder="Enter Roblox ID" value={robloxId} onChange={(e) => setRobloxId(e.target.value)} onBlur={handleRobloxIdBlur} disabled={fetchingUser} />
+                {fetchingUser && <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />}
               </div>
             </div>
-
             <Button type="submit" className="w-full" disabled={loading || fetchingUser}>
               <Search className="h-4 w-4 mr-2" />
               {loading ? "Searching..." : "Search"}
@@ -296,13 +198,14 @@ export default function Lookup() {
 
       {playerData && (
         <>
+          {/* Player Info Card */}
           <Card className="border-border shadow-glow-primary/20">
             <CardHeader>
               <CardTitle>Player Information</CardTitle>
               <CardDescription>Details for {playerData.username}</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Roblox ID</p>
                   <p className="font-medium">{playerData.robloxId}</p>
@@ -324,15 +227,33 @@ export default function Lookup() {
                   <p className="font-medium">${playerData.money.toLocaleString()}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">XP</p>
-                  <p className="font-medium text-muted-foreground italic">Coming soon</p>
-                </div>
-                <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Last Seen</p>
                   <p className="font-medium">{playerData.lastSeen}</p>
                 </div>
               </div>
 
+              {/* XP Section */}
+              <div className="mt-6">
+                <p className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
+                  <Shield className="h-4 w-4" /> Team XP
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {[
+                    { label: 'Police', value: playerData.police_xp },
+                    { label: 'Sheriff', value: playerData.sheriff_xp },
+                    { label: 'State Police', value: playerData.state_police_xp },
+                    { label: 'DOT', value: playerData.dot_xp },
+                    { label: 'Fire', value: playerData.fire_xp },
+                  ].map((team) => (
+                    <div key={team.label} className="border border-border rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground">{team.label}</p>
+                      <p className="font-semibold text-lg">{team.value.toLocaleString()} XP</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Assets Section */}
               <div className="mt-6 space-y-4">
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-muted-foreground">Purchased Dev Products</p>
@@ -362,19 +283,46 @@ export default function Lookup() {
             </CardContent>
           </Card>
 
+          {/* Owned Vehicles Card */}
+          <Card className="border-border shadow-glow-primary/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Car className="h-5 w-5" /> Owned Vehicles ({vehicles.length})
+              </CardTitle>
+              <CardDescription>Vehicles owned by this player (purchased or admin-granted)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {vehicles.length === 0 ? (
+                <p className="text-muted-foreground text-center py-4">No vehicles owned</p>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {vehicles.map((v: any) => (
+                    <div key={v.id} className="border border-border rounded-lg p-3 space-y-1">
+                      <p className="font-medium text-sm">{v.vehicle_name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {v.granted_by ? 'Admin granted' : 'Purchased'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(v.granted_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Tabs defaultValue="moderation" className="w-full">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="moderation">Moderation</TabsTrigger>
-              <TabsTrigger value="sessions">Join/Leave</TabsTrigger>
+              <TabsTrigger value="sessions">Join Logs</TabsTrigger>
               <TabsTrigger value="chat">Chat Logs</TabsTrigger>
               <TabsTrigger value="kills">Kills</TabsTrigger>
             </TabsList>
 
             <TabsContent value="moderation" className="space-y-6">
               <Card className="border-border shadow-glow-primary/20">
-                <CardHeader>
-                  <CardTitle>Warnings ({playerData.warnings.length})</CardTitle>
-                </CardHeader>
+                <CardHeader><CardTitle>Warnings ({playerData.warnings.length})</CardTitle></CardHeader>
                 <CardContent>
                   {playerData.warnings.length === 0 ? (
                     <p className="text-muted-foreground text-center py-4">No warnings found</p>
@@ -386,9 +334,7 @@ export default function Lookup() {
                             <p className="font-medium">{warning.message}</p>
                             <Badge variant="outline" className="text-yellow-500 border-yellow-500">Warning</Badge>
                           </div>
-                          <p className="text-sm text-muted-foreground">
-                            Issued: {new Date(warning.issued_at).toLocaleString()}
-                          </p>
+                          <p className="text-sm text-muted-foreground">Issued: {new Date(warning.issued_at).toLocaleString()}</p>
                         </div>
                       ))}
                     </div>
@@ -397,9 +343,7 @@ export default function Lookup() {
               </Card>
 
               <Card className="border-border shadow-glow-primary/20">
-                <CardHeader>
-                  <CardTitle>Bans ({playerData.bans.length})</CardTitle>
-                </CardHeader>
+                <CardHeader><CardTitle>Bans ({playerData.bans.length})</CardTitle></CardHeader>
                 <CardContent>
                   {playerData.bans.length === 0 ? (
                     <p className="text-muted-foreground text-center py-4">No bans found</p>
@@ -420,9 +364,7 @@ export default function Lookup() {
                           </div>
                           <div className="text-sm text-muted-foreground space-y-1">
                             <p>Banned: {new Date(ban.banned_at).toLocaleString()}</p>
-                            {ban.expires_at && (
-                              <p>Expires: {new Date(ban.expires_at).toLocaleString()}</p>
-                            )}
+                            {ban.expires_at && <p>Expires: {new Date(ban.expires_at).toLocaleString()}</p>}
                           </div>
                         </div>
                       ))}
@@ -435,7 +377,7 @@ export default function Lookup() {
             <TabsContent value="sessions">
               <Card className="border-border shadow-glow-primary/20">
                 <CardHeader>
-                  <CardTitle>Join / Leave Logs ({sessionLogs.length})</CardTitle>
+                  <CardTitle>Join Logs ({sessionLogs.length})</CardTitle>
                   <CardDescription>Recent session activity for this player</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -454,11 +396,7 @@ export default function Lookup() {
                           <TableRow key={log.id} className="border-border">
                             <TableCell>
                               <div className="flex items-center gap-2">
-                                {log.event_type === 'join' ? (
-                                  <LogIn className="h-4 w-4 text-green-500" />
-                                ) : (
-                                  <LogOut className="h-4 w-4 text-red-500" />
-                                )}
+                                {log.event_type === 'join' ? <LogIn className="h-4 w-4 text-green-500" /> : <LogOut className="h-4 w-4 text-red-500" />}
                                 <span className={log.event_type === 'join' ? 'text-green-500' : 'text-red-500'}>
                                   {log.event_type === 'join' ? 'Joined' : 'Left'}
                                 </span>
