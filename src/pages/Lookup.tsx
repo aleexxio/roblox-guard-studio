@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Loader2, LogIn, LogOut, MessageSquare, Sword, Car, Shield } from "lucide-react";
+import { Search, Loader2, LogIn, LogOut, MessageSquare, Sword } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { getUserByUsername, getUserById } from "@/lib/roblox-api";
@@ -16,7 +16,12 @@ const formatPlaytime = (totalSeconds: number): string => {
   const hours = Math.floor((totalSeconds % 86400) / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const secs = totalSeconds % 60;
-  return `${days}d ${hours}h ${minutes}m ${secs}s`;
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0) parts.push(`${minutes}m`);
+  if (secs > 0 || parts.length === 0) parts.push(`${secs}s`);
+  return parts.join(' ');
 };
 
 export default function Lookup() {
@@ -234,9 +239,7 @@ export default function Lookup() {
 
               {/* XP Section */}
               <div className="mt-6">
-                <p className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
-                  <Shield className="h-4 w-4" /> Team XP
-                </p>
+                <p className="text-sm font-medium text-muted-foreground mb-3">Team XP</p>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {[
                     { label: 'Police', value: playerData.police_xp },
@@ -286,10 +289,8 @@ export default function Lookup() {
           {/* Owned Vehicles Card */}
           <Card className="border-border shadow-glow-primary/20">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Car className="h-5 w-5" /> Owned Vehicles ({vehicles.length})
-              </CardTitle>
-              <CardDescription>Vehicles owned by this player (purchased or admin-granted)</CardDescription>
+              <CardTitle>Owned Vehicles ({vehicles.length})</CardTitle>
+              <CardDescription>Vehicles owned by this player</CardDescription>
             </CardHeader>
             <CardContent>
               {vehicles.length === 0 ? (
@@ -317,7 +318,7 @@ export default function Lookup() {
               <TabsTrigger value="moderation">Moderation</TabsTrigger>
               <TabsTrigger value="sessions">Join Logs</TabsTrigger>
               <TabsTrigger value="chat">Chat Logs</TabsTrigger>
-              <TabsTrigger value="kills">Kills</TabsTrigger>
+              <TabsTrigger value="kills">Kill Logs</TabsTrigger>
             </TabsList>
 
             <TabsContent value="moderation" className="space-y-6">
