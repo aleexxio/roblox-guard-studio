@@ -29,44 +29,72 @@ type Role = "moderator" | "admin";
 const AppContent = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [userRole, setUserRole] = useState<Role | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [authReady, setAuthReady] = useState(false);
+  const [roleLoading, setRoleLoading] = useState(false);
+  const [roleError, setRoleError] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
+    const syncSession = (nextSession: Session | null) => {
+      setSession(nextSession);
+      setUserRole(null);
+      setRoleError(null);
+      setRoleLoading(!!nextSession?.user);
+      setAuthReady(true);
+    };
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+      syncSession(session);
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      syncSession(session);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchUserRole = async () => {
       if (!session?.user) {
         setUserRole(null);
-        setLoading(false);
+        setRoleLoading(false);
         return;
       }
 
-      const { data } = await supabase
+      setRoleLoading(true);
+
+      const { data, error } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', session.user.id)
         .maybeSingle();
 
+      if (!isMounted) return;
+
+      if (error) {
+        console.error('Failed to fetch user role:', error);
+        setRoleError(error.message);
+        setUserRole(null);
+        setRoleLoading(false);
+        return;
+      }
+
       setUserRole(data?.role || null);
-      setLoading(false);
+      setRoleLoading(false);
     };
 
     fetchUserRole();
-  }, [session]);
 
-  if (loading) {
+    return () => {
+      isMounted = false;
+    };
+  }, [session?.user?.id]);
+
+  if (!authReady || roleLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
@@ -80,7 +108,15 @@ const AppContent = () => {
   }
 
   if (!userRole) {
-    return <div className="min-h-screen flex items-center justify-center">No role assigned. Contact an administrator.</div>;
+    const accountName = session.user.email?.split('@')[0] || 'this account';
+
+    return (
+      <div className="min-h-screen flex items-center justify-center px-6 text-center text-foreground">
+        {roleError
+          ? `We couldn't verify permissions for ${accountName}. Please refresh and try again, or contact an administrator.`
+          : `No role assigned for ${accountName}. Contact an administrator.`}
+      </div>
+    );
   }
 
   return (

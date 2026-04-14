@@ -19,6 +19,25 @@ const PRESET_REASONS = [
   "Game Staff Impersonation",
 ];
 
+const getRobloxBanErrorMessage = (robloxResult: any, robloxError?: { message?: string } | null) => {
+  const rawDetail = robloxResult?.details;
+
+  if (typeof rawDetail === "string" && rawDetail.trim().length > 0) {
+    try {
+      const parsed = JSON.parse(rawDetail);
+      if (typeof parsed?.message === "string" && parsed.message.trim().length > 0) {
+        return parsed.message;
+      }
+    } catch {
+      return rawDetail;
+    }
+
+    return rawDetail;
+  }
+
+  return robloxResult?.error || robloxError?.message || "Unknown error";
+};
+
 export default function Ban() {
   const [robloxId, setRobloxId] = useState("");
   const [username, setUsername] = useState("");
@@ -222,7 +241,7 @@ export default function Ban() {
         });
 
         if (robloxError || (robloxResult && !robloxResult.success)) {
-          const detail = robloxResult?.error || robloxResult?.details || robloxError?.message || 'Unknown error';
+          const detail = getRobloxBanErrorMessage(robloxResult, robloxError);
           console.error('Roblox ban API error:', detail);
           toast({
             title: "Warning",
