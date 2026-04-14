@@ -13,10 +13,7 @@ export function Header() {
       <div className="flex items-center gap-4">
         <SidebarTrigger />
       </div>
-      <Button variant="ghost" size="sm" onClick={handleLogout}>
-        <LogOut className="h-4 w-4 mr-2" />
-        Log Out
-      </Button>
+      <div />
     </header>
   );
 }

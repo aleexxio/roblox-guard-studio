@@ -285,7 +285,7 @@ export default function Ban() {
     <div className="p-8 space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-foreground">Ban Player</h1>
-        <p className="text-muted-foreground">Remove a player from the game</p>
+        <p className="text-muted-foreground">Ban a player from the game</p>
       </div>
 
       <Card className="border-border shadow-glow-primary/20">
