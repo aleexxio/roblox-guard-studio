@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,10 +6,27 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Loader2, LogIn, LogOut, MessageSquare, Sword } from "lucide-react";
+import { Search, Loader2, LogIn, LogOut, MessageSquare, Sword, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { getUserByUsername, getUserById } from "@/lib/roblox-api";
+import { Switch } from "@/components/ui/switch";
+
+const FLAGGED_WORDS = [
+  "dick","sex","penis","cock","ass","balls","daddy","suck","dildo","porn",
+  "nga","bed","leg","legs","push","harder","tit","tits","tounge","lick",
+  "slap","butt","spread","squirt","feet","burst","hole","blow","fuh","fck",
+  "fk","sht","nude","mommy","suicide","kill","spank","taste","pedophile",
+  "nsfw","naked","masturbate","horny","gay","boob","test",
+];
+
+function containsFlaggedWord(message: string): boolean {
+  const lower = message.toLowerCase();
+  return FLAGGED_WORDS.some((word) => {
+    const regex = new RegExp(`\\b${word}\\b`, 'i');
+    return regex.test(lower);
+  });
+}
 
 const formatPlaytime = (totalSeconds: number): string => {
   const days = Math.floor(totalSeconds / 86400);
