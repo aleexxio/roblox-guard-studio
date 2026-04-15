@@ -439,12 +439,32 @@ export default function Lookup() {
             <TabsContent value="chat">
               <Card className="border-border shadow-glow-primary/20">
                 <CardHeader>
-                  <CardTitle>Chat Logs ({chatLogs.length})</CardTitle>
-                  <CardDescription>Recent chat messages from this player</CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Chat Logs ({chatLogs.length})</CardTitle>
+                      <CardDescription>Recent chat messages from this player</CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                      <Label htmlFor="flagged-toggle" className="text-sm cursor-pointer">Flagged Only</Label>
+                      <Switch
+                        id="flagged-toggle"
+                        checked={showFlaggedOnly}
+                        onCheckedChange={setShowFlaggedOnly}
+                      />
+                      {showFlaggedOnly && (
+                        <Badge variant="outline" className="border-yellow-500 text-yellow-500 ml-1">
+                          {filteredChatLogs.length} flagged
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  {chatLogs.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-4">No chat logs found</p>
+                  {filteredChatLogs.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-4">
+                      {showFlaggedOnly ? "No flagged messages found" : "No chat logs found"}
+                    </p>
                   ) : (
                     <Table>
                       <TableHeader>
@@ -454,17 +474,21 @@ export default function Lookup() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {chatLogs.map((log: any) => (
-                          <TableRow key={log.id} className="border-border">
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <MessageSquare className="h-4 w-4 text-muted-foreground shrink-0" />
-                                <span>{log.message}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">{new Date(log.created_at).toLocaleString()}</TableCell>
-                          </TableRow>
-                        ))}
+                        {filteredChatLogs.map((log: any) => {
+                          const isFlagged = containsFlaggedWord(log.message);
+                          return (
+                            <TableRow key={log.id} className={`border-border ${isFlagged ? 'bg-yellow-500/10' : ''}`}>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  {isFlagged && <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0" />}
+                                  <MessageSquare className="h-4 w-4 text-muted-foreground shrink-0" />
+                                  <span>{log.message}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">{new Date(log.created_at).toLocaleString()}</TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   )}
