@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,10 +6,27 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Loader2, LogIn, LogOut, MessageSquare, Sword } from "lucide-react";
+import { Search, Loader2, LogIn, LogOut, MessageSquare, Sword, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { getUserByUsername, getUserById } from "@/lib/roblox-api";
+import { Switch } from "@/components/ui/switch";
+
+const FLAGGED_WORDS = [
+  "dick","sex","penis","cock","ass","balls","daddy","suck","dildo","porn",
+  "nga","bed","leg","legs","push","harder","tit","tits","tounge","lick",
+  "slap","butt","spread","squirt","feet","burst","hole","blow","fuh","fck",
+  "fk","sht","nude","mommy","suicide","kill","spank","taste","pedophile",
+  "nsfw","naked","masturbate","horny","gay","boob","test",
+];
+
+function containsFlaggedWord(message: string): boolean {
+  const lower = message.toLowerCase();
+  return FLAGGED_WORDS.some((word) => {
+    const regex = new RegExp(`\\b${word}\\b`, 'i');
+    return regex.test(lower);
+  });
+}
 
 const formatPlaytime = (totalSeconds: number): string => {
   const days = Math.floor(totalSeconds / 86400);
@@ -34,7 +51,13 @@ export default function Lookup() {
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetchingUser, setFetchingUser] = useState(false);
+  const [showFlaggedOnly, setShowFlaggedOnly] = useState(false);
   const { toast } = useToast();
+
+  const filteredChatLogs = useMemo(() => {
+    if (!showFlaggedOnly) return chatLogs;
+    return chatLogs.filter((log: any) => containsFlaggedWord(log.message));
+  }, [chatLogs, showFlaggedOnly]);
 
   const handleUsernameBlur = async () => {
     if (username.trim().length > 0 && !robloxId) {
@@ -416,12 +439,32 @@ export default function Lookup() {
             <TabsContent value="chat">
               <Card className="border-border shadow-glow-primary/20">
                 <CardHeader>
-                  <CardTitle>Chat Logs ({chatLogs.length})</CardTitle>
-                  <CardDescription>Recent chat messages from this player</CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Chat Logs ({chatLogs.length})</CardTitle>
+                      <CardDescription>Recent chat messages from this player</CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                      <Label htmlFor="flagged-toggle" className="text-sm cursor-pointer">Flagged Only</Label>
+                      <Switch
+                        id="flagged-toggle"
+                        checked={showFlaggedOnly}
+                        onCheckedChange={setShowFlaggedOnly}
+                      />
+                      {showFlaggedOnly && (
+                        <Badge variant="outline" className="border-yellow-500 text-yellow-500 ml-1">
+                          {filteredChatLogs.length} flagged
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  {chatLogs.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-4">No chat logs found</p>
+                  {filteredChatLogs.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-4">
+                      {showFlaggedOnly ? "No flagged messages found" : "No chat logs found"}
+                    </p>
                   ) : (
                     <Table>
                       <TableHeader>
@@ -431,17 +474,21 @@ export default function Lookup() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {chatLogs.map((log: any) => (
-                          <TableRow key={log.id} className="border-border">
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <MessageSquare className="h-4 w-4 text-muted-foreground shrink-0" />
-                                <span>{log.message}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">{new Date(log.created_at).toLocaleString()}</TableCell>
-                          </TableRow>
-                        ))}
+                        {filteredChatLogs.map((log: any) => {
+                          const isFlagged = containsFlaggedWord(log.message);
+                          return (
+                            <TableRow key={log.id} className={`border-border ${isFlagged ? 'bg-yellow-500/10' : ''}`}>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  {isFlagged && <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0" />}
+                                  <MessageSquare className="h-4 w-4 text-muted-foreground shrink-0" />
+                                  <span>{log.message}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">{new Date(log.created_at).toLocaleString()}</TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   )}

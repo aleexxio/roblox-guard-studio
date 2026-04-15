@@ -30,7 +30,6 @@ function durationToSeconds(duration: string): number | null {
   }
 }
 
-// Always return 200 so supabase.functions.invoke can read the body
 function respond(success: boolean, payload: Record<string, unknown> = {}): Response {
   return new Response(JSON.stringify({ success, ...payload }), {
     status: 200,
@@ -43,7 +42,6 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Verify authorization
   const authHeader = req.headers.get('authorization');
   if (!authHeader) {
     return respond(false, { error: 'Unauthorized' });
@@ -70,21 +68,26 @@ serve(async (req) => {
     if (action === 'ban') {
       const durationSeconds = durationToSeconds(duration || 'permanent');
       
+      // Roblox v2 API uses snake_case in both body and updateMask
       const restrictionPayload: any = {
-        gameJoinRestriction: {
+        game_join_restriction: {
           active: true,
-          displayReason: reason || 'You have been banned.',
-          privateReason: notes || reason || 'Banned via moderation panel.',
+          display_reason: `Reason: ${reason || 'You have been banned.'}`,
+          private_reason: notes || reason || 'Banned via moderation panel.',
         },
       };
 
       if (durationSeconds !== null) {
-        restrictionPayload.gameJoinRestriction.duration = `${durationSeconds}s`;
+        restrictionPayload.game_join_restriction.duration = `${durationSeconds}s`;
       }
 
-      const updateMaskFields = ['gameJoinRestriction.active', 'gameJoinRestriction.displayReason', 'gameJoinRestriction.privateReason'];
+      const updateMaskFields = [
+        'game_join_restriction.active',
+        'game_join_restriction.display_reason',
+        'game_join_restriction.private_reason',
+      ];
       if (durationSeconds !== null) {
-        updateMaskFields.push('gameJoinRestriction.duration');
+        updateMaskFields.push('game_join_restriction.duration');
       }
       const apiUrl = `${baseUrl}?updateMask=${updateMaskFields.join(',')}`;
 
@@ -115,12 +118,12 @@ serve(async (req) => {
 
     if (action === 'unban') {
       const restrictionPayload = {
-        gameJoinRestriction: {
+        game_join_restriction: {
           active: false,
         },
       };
 
-      const apiUrl = `${baseUrl}?updateMask=gameJoinRestriction.active`;
+      const apiUrl = `${baseUrl}?updateMask=game_join_restriction.active`;
 
       console.log('Calling Roblox unban API:', apiUrl);
 
