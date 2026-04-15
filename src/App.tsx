@@ -32,27 +32,48 @@ const AppContent = () => {
   const [authReady, setAuthReady] = useState(false);
   const [roleLoading, setRoleLoading] = useState(false);
   const [roleError, setRoleError] = useState<string | null>(null);
+  const [roleRequestKey, setRoleRequestKey] = useState(0);
 
   useEffect(() => {
+    let isMounted = true;
+
     const syncSession = (nextSession: Session | null) => {
+      if (!isMounted) return;
+
       setSession(nextSession);
-      setUserRole(null);
       setRoleError(null);
-      setRoleLoading(!!nextSession?.user);
       setAuthReady(true);
+
+      if (!nextSession?.user) {
+        setUserRole(null);
+        setRoleLoading(false);
+        return;
+      }
+
+      setRoleLoading(true);
+      setRoleRequestKey((current) => current + 1);
     };
+
+    const restoreSession = async () => {
+      const {
+        data: { session: restoredSession },
+      } = await supabase.auth.getSession();
+
+      syncSession(restoredSession);
+    };
+
+    void restoreSession();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      syncSession(session);
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      syncSession(nextSession);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      syncSession(session);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -66,12 +87,11 @@ const AppContent = () => {
       }
 
       setRoleLoading(true);
+      setRoleError(null);
 
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', session.user.id)
-        .maybeSingle();
+      const { data, error } = await supabase.rpc('get_user_role', {
+        _user_id: session.user.id,
+      });
 
       if (!isMounted) return;
 
@@ -83,16 +103,18 @@ const AppContent = () => {
         return;
       }
 
-      setUserRole(data?.role || null);
+      setUserRole((data as Role | null) ?? null);
       setRoleLoading(false);
     };
 
-    fetchUserRole();
+    if (roleRequestKey > 0) {
+      void fetchUserRole();
+    }
 
     return () => {
       isMounted = false;
     };
-  }, [session?.user?.id]);
+  }, [roleRequestKey, session?.user?.id]);
 
   if (!authReady || roleLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
