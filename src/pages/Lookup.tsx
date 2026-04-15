@@ -10,20 +10,19 @@ import { Search, Loader2, LogIn, LogOut, MessageSquare, Sword, AlertTriangle } f
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { getUserByUsername, getUserById } from "@/lib/roblox-api";
-import { Switch } from "@/components/ui/switch";
 
 const FLAGGED_WORDS = [
-  "dick","sex","penis","cock","ass","balls","daddy","suck","dildo","porn",
-  "nga","bed","leg","legs","push","harder","tit","tits","tounge","lick",
-  "slap","butt","spread","squirt","feet","burst","hole","blow","fuh","fck",
-  "fk","sht","nude","mommy","suicide","kill","spank","taste","pedophile",
-  "nsfw","naked","masturbate","horny","gay","boob","test",
+  "dick", "sex", "penis", "cock", "ass", "balls", "daddy", "suck", "dildo", "porn",
+  "nga", "bed", "leg", "legs", "push", "harder", "tit", "tits", "tounge", "lick",
+  "slap", "butt", "spread", "squirt", "feet", "burst", "hole", "blow", "fuh", "fck",
+  "fk", "sht", "nude", "mommy", "suicide", "kill", "spank", "taste", "pedophile",
+  "nsfw", "naked", "masturbate", "horny", "gay", "boob", "test",
 ];
 
 function containsFlaggedWord(message: string): boolean {
   const lower = message.toLowerCase();
   return FLAGGED_WORDS.some((word) => {
-    const regex = new RegExp(`\\b${word}\\b`, 'i');
+    const regex = new RegExp(`\\b${word}\\b`, "i");
     return regex.test(lower);
   });
 }
@@ -38,7 +37,7 @@ const formatPlaytime = (totalSeconds: number): string => {
   if (hours > 0) parts.push(`${hours}h`);
   if (minutes > 0) parts.push(`${minutes}m`);
   if (secs > 0 || parts.length === 0) parts.push(`${secs}s`);
-  return parts.join(' ');
+  return parts.join(" ");
 };
 
 export default function Lookup() {
@@ -51,13 +50,12 @@ export default function Lookup() {
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetchingUser, setFetchingUser] = useState(false);
-  const [showFlaggedOnly, setShowFlaggedOnly] = useState(false);
   const { toast } = useToast();
 
-  const filteredChatLogs = useMemo(() => {
-    if (!showFlaggedOnly) return chatLogs;
-    return chatLogs.filter((log: any) => containsFlaggedWord(log.message));
-  }, [chatLogs, showFlaggedOnly]);
+  const flaggedChatLogs = useMemo(
+    () => chatLogs.filter((log: any) => containsFlaggedWord(log.message)),
+    [chatLogs],
+  );
 
   const handleUsernameBlur = async () => {
     if (username.trim().length > 0 && !robloxId) {
@@ -99,17 +97,17 @@ export default function Lookup() {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!robloxId && !username) {
       toast({ title: "Error", description: "Please enter a username or Roblox ID", variant: "destructive" });
       return;
     }
 
     setLoading(true);
-    
+
     try {
       let searchRobloxId = robloxId;
-      
+
       if (!robloxId && username) {
         const user = await getUserByUsername(username.trim());
         if (user) {
@@ -128,11 +126,10 @@ export default function Lookup() {
         if (user) setUsername(user.name);
       }
 
-      // Get player data
       const { data: player, error: playerError } = await supabase
-        .from('players')
-        .select('*')
-        .eq('roblox_id', searchRobloxId)
+        .from("players")
+        .select("*")
+        .eq("roblox_id", searchRobloxId)
         .maybeSingle();
 
       if (playerError) throw playerError;
@@ -143,19 +140,19 @@ export default function Lookup() {
         return;
       }
 
-      // Fetch all related data in parallel
       const [warningsRes, bansRes, sessionsRes, chatsRes, killsKillerRes, killsVictimRes, vehiclesRes] = await Promise.all([
-        supabase.from('warnings').select('*').eq('player_id', player.id).order('issued_at', { ascending: false }),
-        supabase.from('bans').select('*').eq('player_id', player.id).order('banned_at', { ascending: false }),
-        supabase.from('player_session_logs').select('*').eq('roblox_id', searchRobloxId).order('created_at', { ascending: false }).limit(100),
-        supabase.from('player_chat_logs').select('*').eq('roblox_id', searchRobloxId).order('created_at', { ascending: false }).limit(200),
-        supabase.from('player_kill_logs').select('*').eq('killer_roblox_id', searchRobloxId).order('created_at', { ascending: false }).limit(100),
-        supabase.from('player_kill_logs').select('*').eq('victim_roblox_id', searchRobloxId).order('created_at', { ascending: false }).limit(100),
-        supabase.from('player_vehicles').select('*').eq('roblox_id', searchRobloxId).order('granted_at', { ascending: false }),
+        supabase.from("warnings").select("*").eq("player_id", player.id).order("issued_at", { ascending: false }),
+        supabase.from("bans").select("*").eq("player_id", player.id).order("banned_at", { ascending: false }),
+        supabase.from("player_session_logs").select("*").eq("roblox_id", searchRobloxId).order("created_at", { ascending: false }).limit(100),
+        supabase.from("player_chat_logs").select("*").eq("roblox_id", searchRobloxId).order("created_at", { ascending: false }).limit(200),
+        supabase.from("player_kill_logs").select("*").eq("killer_roblox_id", searchRobloxId).order("created_at", { ascending: false }).limit(100),
+        supabase.from("player_kill_logs").select("*").eq("victim_roblox_id", searchRobloxId).order("created_at", { ascending: false }).limit(100),
+        supabase.from("player_vehicles").select("*").eq("roblox_id", searchRobloxId).order("granted_at", { ascending: false }),
       ]);
 
-      const allKills = [...(killsKillerRes.data || []), ...(killsVictimRes.data || [])]
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      const allKills = [...(killsKillerRes.data || []), ...(killsVictimRes.data || [])].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
 
       setSessionLogs(sessionsRes.data || []);
       setChatLogs(chatsRes.data || []);
@@ -226,7 +223,6 @@ export default function Lookup() {
 
       {playerData && (
         <>
-          {/* Player Info Card */}
           <Card className="border-border shadow-glow-primary/20">
             <CardHeader>
               <CardTitle>Player Information</CardTitle>
@@ -260,16 +256,15 @@ export default function Lookup() {
                 </div>
               </div>
 
-              {/* XP Section */}
               <div className="mt-6">
                 <p className="text-sm font-medium text-muted-foreground mb-3">Team XP</p>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {[
-                    { label: 'Police', value: playerData.police_xp },
-                    { label: 'Sheriff', value: playerData.sheriff_xp },
-                    { label: 'State Police', value: playerData.state_police_xp },
-                    { label: 'DOT', value: playerData.dot_xp },
-                    { label: 'Fire', value: playerData.fire_xp },
+                    { label: "Police", value: playerData.police_xp },
+                    { label: "Sheriff", value: playerData.sheriff_xp },
+                    { label: "State Police", value: playerData.state_police_xp },
+                    { label: "DOT", value: playerData.dot_xp },
+                    { label: "Fire", value: playerData.fire_xp },
                   ].map((team) => (
                     <div key={team.label} className="border border-border rounded-lg p-3">
                       <p className="text-xs text-muted-foreground">{team.label}</p>
@@ -279,7 +274,6 @@ export default function Lookup() {
                 </div>
               </div>
 
-              {/* Assets Section */}
               <div className="mt-6 space-y-4">
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-muted-foreground">Purchased Dev Products</p>
@@ -309,7 +303,6 @@ export default function Lookup() {
             </CardContent>
           </Card>
 
-          {/* Owned Vehicles Card */}
           <Card className="border-border shadow-glow-primary/20">
             <CardHeader>
               <CardTitle>Owned Vehicles ({vehicles.length})</CardTitle>
@@ -323,12 +316,8 @@ export default function Lookup() {
                   {vehicles.map((v: any) => (
                     <div key={v.id} className="border border-border rounded-lg p-3 space-y-1">
                       <p className="font-medium text-sm">{v.vehicle_name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {v.granted_by ? 'Admin granted' : 'Purchased'}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(v.granted_at).toLocaleDateString()}
-                      </p>
+                      <p className="text-xs text-muted-foreground">{v.granted_by ? "Admin granted" : "Purchased"}</p>
+                      <p className="text-xs text-muted-foreground">{new Date(v.granted_at).toLocaleDateString()}</p>
                     </div>
                   ))}
                 </div>
@@ -356,7 +345,7 @@ export default function Lookup() {
                         <div key={warning.id} className="border border-border rounded-lg p-4 space-y-2">
                           <div className="flex justify-between items-start">
                             <p className="font-medium">{warning.message}</p>
-                            <Badge variant="outline" className="text-yellow-500 border-yellow-500">Warning</Badge>
+                            <Badge variant="outline" className="border-destructive/40 text-destructive">Warning</Badge>
                           </div>
                           <p className="text-sm text-muted-foreground">Issued: {new Date(warning.issued_at).toLocaleString()}</p>
                         </div>
@@ -382,7 +371,7 @@ export default function Lookup() {
                                 <Badge variant={ban.is_active ? "destructive" : "outline"}>
                                   {ban.is_active ? "Active" : "Inactive"}
                                 </Badge>
-                                <Badge variant="outline">{ban.duration === 'permanent' ? 'Permanent' : ban.duration}</Badge>
+                                <Badge variant="outline">{ban.duration === "permanent" ? "Permanent" : ban.duration}</Badge>
                               </div>
                             </div>
                           </div>
@@ -420,9 +409,9 @@ export default function Lookup() {
                           <TableRow key={log.id} className="border-border">
                             <TableCell>
                               <div className="flex items-center gap-2">
-                                {log.event_type === 'join' ? <LogIn className="h-4 w-4 text-green-500" /> : <LogOut className="h-4 w-4 text-red-500" />}
-                                <span className={log.event_type === 'join' ? 'text-green-500' : 'text-red-500'}>
-                                  {log.event_type === 'join' ? 'Joined' : 'Left'}
+                                {log.event_type === "join" ? <LogIn className="h-4 w-4 text-green-500" /> : <LogOut className="h-4 w-4 text-red-500" />}
+                                <span className={log.event_type === "join" ? "text-green-500" : "text-red-500"}>
+                                  {log.event_type === "join" ? "Joined" : "Left"}
                                 </span>
                               </div>
                             </TableCell>
@@ -439,59 +428,93 @@ export default function Lookup() {
             <TabsContent value="chat">
               <Card className="border-border shadow-glow-primary/20">
                 <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle>Chat Logs ({chatLogs.length})</CardTitle>
-                      <CardDescription>Recent chat messages from this player</CardDescription>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                      <Label htmlFor="flagged-toggle" className="text-sm cursor-pointer">Flagged Only</Label>
-                      <Switch
-                        id="flagged-toggle"
-                        checked={showFlaggedOnly}
-                        onCheckedChange={setShowFlaggedOnly}
-                      />
-                      {showFlaggedOnly && (
-                        <Badge variant="outline" className="border-yellow-500 text-yellow-500 ml-1">
-                          {filteredChatLogs.length} flagged
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
+                  <CardTitle>Chat Logs</CardTitle>
+                  <CardDescription>All messages plus a separate flagged-only list for this player</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  {filteredChatLogs.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-4">
-                      {showFlaggedOnly ? "No flagged messages found" : "No chat logs found"}
-                    </p>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="hover:bg-transparent border-border">
-                          <TableHead>Message</TableHead>
-                          <TableHead className="w-[200px]">Timestamp</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredChatLogs.map((log: any) => {
-                          const isFlagged = containsFlaggedWord(log.message);
-                          return (
-                            <TableRow key={log.id} className={`border-border ${isFlagged ? 'bg-yellow-500/10' : ''}`}>
+                <CardContent className="space-y-6">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="font-medium text-foreground">All Messages</h3>
+                        <p className="text-sm text-muted-foreground">Includes both normal and flagged messages</p>
+                      </div>
+                      <Badge variant="outline">{chatLogs.length}</Badge>
+                    </div>
+                    {chatLogs.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-4">No chat logs found</p>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="hover:bg-transparent border-border">
+                            <TableHead>Message</TableHead>
+                            <TableHead className="w-[140px]">Status</TableHead>
+                            <TableHead className="w-[200px]">Timestamp</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {chatLogs.map((log: any) => {
+                            const isFlagged = containsFlaggedWord(log.message);
+                            return (
+                              <TableRow key={log.id} className={`border-border ${isFlagged ? "bg-destructive/5" : ""}`}>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <MessageSquare className="h-4 w-4 text-muted-foreground shrink-0" />
+                                    <span>{log.message}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  {isFlagged ? (
+                                    <Badge variant="outline" className="border-destructive/40 text-destructive">
+                                      <AlertTriangle className="mr-1 h-3 w-3" />
+                                      Flagged
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="secondary">Normal</Badge>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-muted-foreground">{new Date(log.created_at).toLocaleString()}</TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="font-medium text-foreground">Flagged Messages</h3>
+                        <p className="text-sm text-muted-foreground">Messages matching the flagged words list</p>
+                      </div>
+                      <Badge variant="outline" className="border-destructive/40 text-destructive">{flaggedChatLogs.length}</Badge>
+                    </div>
+                    {flaggedChatLogs.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-4">No flagged messages found</p>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="hover:bg-transparent border-border">
+                            <TableHead>Message</TableHead>
+                            <TableHead className="w-[200px]">Timestamp</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {flaggedChatLogs.map((log: any) => (
+                            <TableRow key={log.id} className="border-border bg-destructive/5">
                               <TableCell>
                                 <div className="flex items-center gap-2">
-                                  {isFlagged && <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0" />}
-                                  <MessageSquare className="h-4 w-4 text-muted-foreground shrink-0" />
+                                  <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
                                   <span>{log.message}</span>
                                 </div>
                               </TableCell>
                               <TableCell className="text-muted-foreground">{new Date(log.created_at).toLocaleString()}</TableCell>
                             </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  )}
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -522,14 +545,14 @@ export default function Lookup() {
                           return (
                             <TableRow key={log.id} className="border-border">
                               <TableCell>
-                                <Badge variant={isKiller ? "destructive" : "outline"} className={!isKiller ? "border-yellow-500 text-yellow-500" : ""}>
+                                <Badge variant={isKiller ? "destructive" : "outline"} className={!isKiller ? "border-destructive/40 text-destructive" : ""}>
                                   <Sword className="h-3 w-3 mr-1" />
-                                  {isKiller ? 'Killer' : 'Victim'}
+                                  {isKiller ? "Killer" : "Victim"}
                                 </Badge>
                               </TableCell>
                               <TableCell>{log.killer_username || log.killer_roblox_id}</TableCell>
                               <TableCell>{log.victim_username || log.victim_roblox_id}</TableCell>
-                              <TableCell>{log.weapon || '—'}</TableCell>
+                              <TableCell>{log.weapon || "—"}</TableCell>
                               <TableCell className="text-muted-foreground">{new Date(log.created_at).toLocaleString()}</TableCell>
                             </TableRow>
                           );
