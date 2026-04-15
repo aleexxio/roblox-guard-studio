@@ -51,7 +51,13 @@ export default function Lookup() {
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetchingUser, setFetchingUser] = useState(false);
+  const [showFlaggedOnly, setShowFlaggedOnly] = useState(false);
   const { toast } = useToast();
+
+  const filteredChatLogs = useMemo(() => {
+    if (!showFlaggedOnly) return chatLogs;
+    return chatLogs.filter((log: any) => containsFlaggedWord(log.message));
+  }, [chatLogs, showFlaggedOnly]);
 
   const handleUsernameBlur = async () => {
     if (username.trim().length > 0 && !robloxId) {
